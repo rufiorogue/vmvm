@@ -1,0 +1,158 @@
+#!/usr/bin/env python
+
+import logging, yaml, subprocess, io, sys, os
+from logging import info,warning,error
+
+
+class App:
+    def __init__(self, conf_dir: str):
+        os.chdir(conf_dir)
+        self._conf = yaml.safe_load(open('vmconfig.yml', 'r'))
+
+    def _exec(self, executable_name: str, args: list[str]) -> int:
+        real_args = [executable_name] + args
+        info('running %s with args: %s', executable_name, " ".join(real_args))
+        proc = subprocess.Popen(args=real_args,stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        info('-'*80)
+        for line in io.TextIOWrapper(proc.stdout, encoding='utf-8'):
+            info(line.rstrip())
+        exit_code = proc.wait()
+        info('-'*80)
+        info('%s exited with code %d', executable_name, exit_code)
+        return exit_code
+
+    def act_init(self):
+        info('action: initializing vm')
+        
+        if 'disk' in self._conf:
+            first_disk = self._conf['disk']
+        elif 'disks' in self._conf:
+            first_disk = self._conf['disks'][0]
+        else:
+            first_disk = None
+        if first_disk is not None:
+            if os.path.exists(first_disk):
+                error('disk already exists, not overwriting: %s', first_disk)
+                return
+            else:
+                self._exec('qemu-img', ['create', '-f', 'qcow2', first_disk, '100G'])
+        else:
+            error('no disks configured?')
+
+    def _common_args(self):
+        args = [
+            '-name', self._conf['name'],
+            '-machine', 'q35,accel=kvm',
+            '-cpu', 'host',
+            '-smp', str(self._conf['cpus']),
+            '-m', self._conf['ram'],
+
+            # display:
+            '-display', 'gtk',
+            #'-display', 'sdl,gl=on',
+            '-vga', 'qxl',
+            # '-vga', 'virtio-vga-gl',
+
+            # SPICE:           
+            '-spice', f'port={self._conf["spice_port"]},disable-ticketing=on,gl=off',
+            '-device', 'virtio-serial-pci',
+            '-device', 'virtserialport,chardev=spicechannel0,name=com.redhat.spice.0',
+            '-chardev', 'spicevmc,id=spicechannel0,name=vdagent',
+
+            # audio:
+            '-audiodev', 'pa,id=snd0', '-device', 'ich9-intel-hda', '-device', 'hda-output,audiodev=snd0',
+            # '-audiodev', 'pa,id=snd0', '-device', 'AC97,audiodev=snd0',
+            # '-audiodev', 'pa,id=snd0', '-device', 'sb16,audiodev=snd0',
+
+            # usb:
+            '-usbdevice', 'keyboard',
+            '-usbdevice', 'mouse',
+            '-usbdevice', 'tablet',
+
+            # network:
+            '-nic', 'user,ipv6=off,model=virtio-net-pci',
+
+            # misc:
+            #'-balloon', 'virtio',
+            #'-localtime',
+        ]
+
+        def generate_blockdev_desc(idx: int, filename: str) -> list[str]:
+            #d = ['-drive', f'file={filename},if=virtio']
+            d = [
+                '-blockdev', f'driver=file,node-name=hd{idx}_file,filename={filename}',
+                '-blockdev', f'driver=qcow2,file=hd{idx}_file,node-name=hd{idx}',
+                '-device', 'virtio-scsi-pci',
+                '-device', f'scsi-hd,drive=hd{idx}'
+            ]
+            return d
+
+        if 'disk' in self._conf:
+            args += generate_blockdev_desc(0, self._conf['disk'])
+        elif 'disks' in self._conf:
+            for idx in range(len(self._conf['disks'])):
+                args += generate_blockdev_desc(idx, self._conf['disks'][idx])
+
+        return args
+
+
+    def act_install(self):
+        info('action: installing operating system inside vm')
+        args = self._common_args()
+        args += [
+            '-boot', 'once=d',  # boot from CD-ROM first, switch back to default order after reboot
+        ]
+        for isofile in self._conf['os_install']:
+            args += ['-drive', f'file={isofile},media=cdrom' ]
+        self._exec('qemu-system-x86_64', args)
+
+
+    def act_run(self):
+        info('action: running vm')
+        args = self._common_args()
+        args += [
+            '-boot', 'order=cd',
+        ]
+        self._exec('qemu-system-x86_64', args)
+
+
+def usage():
+    print('A very simple shell for setting up and running QEMU virtual machines from yaml config')
+    print()
+    print('usage: vmvm ACTION VM_CONF_DIR')
+    print()
+    print('  ACTION = init | install | run')
+    print('    init        create virtual disks')
+    print('    install     boot from os_install device to install operating system')
+    print('    run         boot from first hard disk')
+    print()
+    print('  VM_CONF_DIR   dir must contain vmconfig.yml. All paths in config are relative to this dir')
+
+
+def main():
+    logging.basicConfig(format='%(asctime)s  %(levelname)s  %(message)s', level=logging.INFO)
+
+    cmd = None
+    dir_name = None
+    for arg in sys.argv[1:]:
+        if arg in ['init', 'install', 'run']:
+            cmd = arg
+        else:
+            dir_name = arg
+
+    if cmd is None:
+        error('action not specified')
+        usage()
+        return
+
+    if dir_name is None:
+        error('vm conf directory not specified')
+        usage()
+        return
+
+    app = App(dir_name)
+    getattr(app,'act_'+cmd)()
+
+
+if __name__ == '__main__':
+    main()

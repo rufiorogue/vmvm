@@ -1,0 +1,10 @@
+---
+
+name: windows10
+cpus: 4
+ram: 4G
+disk: system.qcow2
+os_install:
+    - Win10_21H2_English_x64.iso
+    - virtio-win-0.1.217.iso
+spice_port: 5900
