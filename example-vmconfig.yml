@@ -4,7 +4,16 @@ name: windows10
 cpus: 4
 ram: 4G
 disk: system.qcow2
+spice_port: 5900
+
+# also suppors variant:
+#
+# disks: 
+#     - system.qcow2
+#     - user_data.qcow2
+
+# will mount these images in "install" mode
 os_install:
     - Win10_21H2_English_x64.iso
     - virtio-win-0.1.217.iso
-spice_port: 5900
+

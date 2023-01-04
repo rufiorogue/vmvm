@@ -4,6 +4,9 @@ import logging, yaml, subprocess, io, sys, os
 from logging import info,warning,error
 
 
+def _wrap_scalar_as_list(scalar_or_list_value):
+    return scalar_or_list_value if type(scalar_or_list_value) == list else [scalar_or_list_value]
+
 class App:
     def __init__(self, conf_dir: str):
         os.chdir(conf_dir)
@@ -102,7 +105,7 @@ class App:
         args += [
             '-boot', 'once=d',  # boot from CD-ROM first, switch back to default order after reboot
         ]
-        for isofile in self._conf['os_install']:
+        for isofile in _wrap_scalar_as_list(self._conf['os_install']):
             args += ['-drive', f'file={isofile},media=cdrom' ]
         self._exec('qemu-system-x86_64', args)
 
