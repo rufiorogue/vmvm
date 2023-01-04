@@ -96,6 +96,11 @@ class App:
             for idx in range(len(self._conf['disks'])):
                 args += generate_blockdev_desc(idx, self._conf['disks'][idx])
 
+        if 'usb' in self._conf:
+            for usb_dev in _wrap_scalar_as_list(self._conf['usb']):
+                vendor_id,product_id = usb_dev.split(':')
+                args += [ '-device', f'usb-host,vendorid=0x{vendor_id},productid=0x{product_id}' ]
+
         return args
 
 

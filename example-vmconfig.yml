@@ -17,3 +17,6 @@ os_install:
     - Win10_21H2_English_x64.iso
     - virtio-win-0.1.217.iso
 
+
+# vendor:product
+usb: 1234:5678
