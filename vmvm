@@ -101,6 +101,17 @@ class App:
                 vendor_id,product_id = usb_dev.split(':')
                 args += [ '-device', f'usb-host,vendorid=0x{vendor_id},productid=0x{product_id}' ]
 
+
+        if 'ro_mount' in self._conf:
+            args += [
+                # '-blockdev', f'driver=vfat,file=fat:ro:{self._conf["ro_mount"]},id=vfat,format=raw,if=none',
+                # '-device', 'usb-storage,drive=vfat',
+
+                #'-hda', f'fat:ro:{self._conf["ro_mount"]}',
+
+                '-drive', f'file=fat:rw:{self._conf["ro_mount"]},format=raw,media=disk',
+            ]
+        
         return args
 
 

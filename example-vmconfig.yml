@@ -20,3 +20,11 @@ os_install:
 
 # vendor:product
 usb: 1234:5678
+
+# mount directory as virtual FAT filesystem
+#
+# Never
+# - use non-ASCII filenames 
+# - write to the FAT directory on the host system while accessing it with the guest system
+# https://www.qemu.org/docs/master/system/images.html#virtual-fat-disk-images
+ro_mount: shared
