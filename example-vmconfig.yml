@@ -6,6 +6,9 @@ ram: 4G
 disk: system.qcow2
 spice_port: 5900
 
+# Use virtio-scsi for disk emulation? Optional, default = True
+disk_virtio: True
+
 # also suppors variant:
 #
 # disks: 

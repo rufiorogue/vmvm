@@ -80,21 +80,28 @@ class App:
             #'-localtime',
         ]
 
-        def generate_blockdev_desc(idx: int, filename: str) -> list[str]:
-            #d = ['-drive', f'file={filename},if=virtio']
+        def generate_blockdev_desc(idx: int, filename: str,use_virtio_scsi: bool) -> list[str]:
+            # d = [ '-drive', f'file={filename},if=virtio,drive=hd{idx},bootindex={idx+1}' ]
             d = [
                 '-blockdev', f'driver=file,node-name=hd{idx}_file,filename={filename}',
                 '-blockdev', f'driver=qcow2,file=hd{idx}_file,node-name=hd{idx}',
-                '-device', 'virtio-scsi-pci',
-                '-device', f'scsi-hd,drive=hd{idx},bootindex={idx+1}'
             ]
+            if use_virtio_scsi:
+                d += [
+                    '-device', 'virtio-scsi-pci',
+                    '-device', f'scsi-hd,drive=hd{idx},bootindex={idx+1}'
+                ]
+            else:
+                d += [
+                    '-device', f'ide-hd,drive=hd{idx},bootindex={idx+1}'
+                ]
             return d
-
+        use_virtio_scsi =self._conf['disk_virtio'] if 'disk_virtio' in self._conf else True
         if 'disk' in self._conf:
-            args += generate_blockdev_desc(0, self._conf['disk'])
+            args += generate_blockdev_desc(0, self._conf['disk'], use_virtio_scsi)
         elif 'disks' in self._conf:
             for idx in range(len(self._conf['disks'])):
-                args += generate_blockdev_desc(idx, self._conf['disks'][idx])
+                args += generate_blockdev_desc(idx, self._conf['disks'][idx], use_virtio_scsi)
 
         if 'usb' in self._conf:
             for usb_dev in _wrap_scalar_as_list(self._conf['usb']):
