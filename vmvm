@@ -74,9 +74,6 @@ class App:
             '-usbdevice', 'mouse',
             '-usbdevice', 'tablet',
 
-            # network:
-            '-nic', 'user,ipv6=off,model=virtio-net-pci',
-
             # misc:
             #'-balloon', 'virtio',
             #'-localtime',
@@ -120,6 +117,17 @@ class App:
 
                 '-drive', f'file=fat:rw:{self._conf["ro_mount"]},format=raw,media=disk',
             ]
+
+        
+        # network:
+        use_nic = self._conf['nic'] if 'nic' in self._conf else True
+        use_nic_virtio = self._conf['nic_virtio'] if 'nic_virtio' in self._conf else True
+        if use_nic:
+            nic_model = 'virtio-net-pci' if use_nic_virtio else 'e1000'
+            args += [ '-nic', f'user,ipv6=off,model={nic_model}' ]
+        else:
+            args += [ '-nic', 'none' ]
+
         
         return args
 
