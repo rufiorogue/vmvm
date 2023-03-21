@@ -3,7 +3,7 @@
 name: windows10
 cpus: 4
 ram: 4G
-spice_port: 5900
+
 
 # disk image file or /dev/ file
 disk: system.qcow2
@@ -51,3 +51,7 @@ nic: True
 # False: use e1000 as NIC model
 # Default=True
 nic_virtio: True
+
+# SPICE port. Can be a number like 5900 or 'auto' to select a next non occupied port
+# Default=auto
+spice_port: auto
