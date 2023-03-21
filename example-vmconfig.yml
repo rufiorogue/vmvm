@@ -25,6 +25,13 @@ os_install:
     - virtio-win-0.1.217.iso
 
 # USB Passthrough
+#
+# QEMU user must be able to rw the device:
+# ---------------------------------------------
+#  /etc/udev/rules.d/50-usbpassthrough.rules                                                                                                                                                                                                                                                 ~/vm/makemkv
+# ---------------------------------------------
+# SUBSYSTEM=="usb", ATTR{idVendor}=="xxxx", ATTR{idProduct}=="xxxx", MODE="0666"
+#
 # vendor:product
 usb: 1234:5678
 
