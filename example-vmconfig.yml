@@ -3,31 +3,44 @@
 name: windows10
 cpus: 4
 ram: 4G
-disk: system.qcow2
 spice_port: 5900
 
-# Use virtio-scsi for disk emulation? Optional, default = True
-disk_virtio: True
+# disk image file or /dev/ file
+disk: system.qcow2
 
-# also suppors variant:
+# Alternative syntax to above
 #
-# disks: 
+# disks:
 #     - system.qcow2
 #     - user_data.qcow2
+
+# Use virtio-scsi for disk emulation?
+# Applicable only to image file based disks
+# Default=True
+disk_virtio: True
 
 # will mount these images in "install" mode
 os_install:
     - Win10_21H2_English_x64.iso
     - virtio-win-0.1.217.iso
 
-
+# USB Passthrough
 # vendor:product
 usb: 1234:5678
 
-# mount directory as virtual FAT filesystem
+# Mount directory as virtual FAT filesystem
 #
 # Never
 # - use non-ASCII filenames 
 # - write to the FAT directory on the host system while accessing it with the guest system
 # https://www.qemu.org/docs/master/system/images.html#virtual-fat-disk-images
 ro_mount: shared
+
+# Add network interface.
+# Default=True
+nic: True
+
+# True: use virtio-net-pci as NIC model
+# False: use e1000 as NIC model
+# Default=True
+nic_virtio: True
