@@ -68,6 +68,8 @@ class App:
             # '-audiodev', 'pa,id=snd0', '-device', 'sb16,audiodev=snd0',
 
             # usb:
+            '-device', 'qemu-xhci',
+
             '-usbdevice', 'keyboard',
             '-usbdevice', 'mouse',
             '-usbdevice', 'tablet',
