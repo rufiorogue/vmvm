@@ -125,9 +125,10 @@ class App:
                     '-drive', f'file={filename},format=raw,media=disk',
                 ]
             else:
+                image_format = 'qcow2' if 'qcow2' in filename else 'raw'
                 d = [
                     '-blockdev', f'driver=file,node-name=hd{idx}_file,filename={filename}',
-                    '-blockdev', f'driver=qcow2,file=hd{idx}_file,node-name=hd{idx}',
+                    '-blockdev', f'driver={image_format},file=hd{idx}_file,node-name=hd{idx}',
                 ]
                 if use_virtio_scsi:
                     d += [
