@@ -4,6 +4,8 @@ name: windows10
 cpus: 4
 ram: 4G
 
+# boot mode: False=BIOS, True=EFI. Default: False
+efi: False
 
 # disk image file or /dev/ file
 disk: system.qcow2

@@ -98,6 +98,26 @@ class App:
             #'-localtime',
         ]
 
+        boot_efi = self._conf['efi'] if 'efi' in self._conf else False
+        if boot_efi:
+            edk2_path = '/usr/share/edk2/x64/'
+
+            if os.path.exists(f'{edk2_path}OVMF_CODE.fd') and os.path.exists(f'{edk2_path}OVMF_VARS.fd'):
+
+                if not os.path.exists('./OVMF_VARS.fd'):
+                    info('OVMF_VARS.fd file does not exist in VM directory, copying from system')
+                    self._exec('cp', [edk2_path + 'OVMF_VARS.fd', '.'])
+
+                args += [
+                    '-drive', f'if=pflash,format=raw,readonly=on,file={edk2_path}OVMF_CODE.fd',
+                    '-drive',  'if=pflash,format=raw,file=OVMF_VARS.fd',
+                ]
+            else:
+                #error('edk2 files not found. Please install edk2-ovmf package.')
+                raise FileNotFoundError('edk2 files not found. Please install edk2-ovmf package.')
+
+
+
         def generate_blockdev_desc(idx: int, filename: str,use_virtio_scsi: bool) -> list[str]:
             # d = [ '-drive', f'file={filename},if=virtio,drive=hd{idx},bootindex={idx+1}' ]
             if '/dev' in filename:
