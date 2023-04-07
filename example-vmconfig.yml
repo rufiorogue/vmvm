@@ -69,6 +69,14 @@ nic: True
 # Default=True
 nic_virtio: True
 
+# Forward local port 2222 to guest port 22
+# Then, you can do :
+#  ssh localhost -p 2222
+nic_forward_ports:
+    - host: 2222
+      guest: 22
+
+
 # SPICE port. Can be a number like 5900 or 'auto' to select a next non occupied port
 # Default=auto
 spice_port: auto

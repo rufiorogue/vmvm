@@ -169,14 +169,24 @@ class App:
                 '-fsdev', f'local,security_model=passthrough,id=fsdev0,path={dir_abs}',
                 '-device', 'virtio-9p-pci,fsdev=fsdev0,mount_tag=hostshare',
             ]
+
         # network:
+        # https://wiki.qemu.org/Documentation/Networking
         use_nic = self._conf['nic'] if 'nic' in self._conf else True
         use_nic_virtio = self._conf['nic_virtio'] if 'nic_virtio' in self._conf else True
         if use_nic:
             nic_model = 'virtio-net-pci' if use_nic_virtio else 'e1000'
-            args += [ '-nic', f'user,ipv6=off,model={nic_model}' ]
+            if 'nic_forward_ports' in self._conf:
+                hostfwd_list = list(map(lambda bind_spec: f"hostfwd=tcp::{bind_spec['host']}-:{bind_spec['guest']}" , self._conf['nic_forward_ports']))
+                hostfwd = ','+','.join(hostfwd_list)
+            else:
+                hostfwd = ''            
+            args += ['-netdev', f'user,id=net0{hostfwd}', '-device', f'{nic_model},netdev=net0' ]
         else:
             args += [ '-nic', 'none' ]
+        
+        return args
+    
     def _boot_args(self, mode: str):
         args = []
         enable_boot_menu = self._conf['bootmenu'] if 'bootmenu' in self._conf else False
