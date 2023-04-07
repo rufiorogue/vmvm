@@ -43,13 +43,22 @@ os_install:
 # vendor:product
 usb: 1234:5678
 
-# Mount directory as virtual FAT filesystem
+
+# Share a host directory with virtiofsd. 
+# This method provides best performance as well as other useful virtualisation features.
+# https://virtio-fs.gitlab.io/index.html
+#
+# On guest the directory can be mounted as:
+#  sudo mount -t 9p -o trans=virtio,version=9p2000.L hostshare /mnt/share
+share_dir_as_fsd: shared
+
+# Map a host directory to a block dev with FAT fs on guest
 #
 # Never
 # - use non-ASCII filenames 
 # - write to the FAT directory on the host system while accessing it with the guest system
 # https://www.qemu.org/docs/master/system/images.html#virtual-fat-disk-images
-ro_mount: shared
+share_dir_as_fat: shared
 
 # Add network interface.
 # Default=True

@@ -153,17 +153,22 @@ class App:
                 args += [ '-device', f'usb-host,vendorid=0x{vendor_id},productid=0x{product_id}' ]
 
 
-        if 'ro_mount' in self._conf:
+        if 'share_dir_as_fat' in self._conf:
             args += [
-                # '-blockdev', f'driver=vfat,file=fat:ro:{self._conf["ro_mount"]},id=vfat,format=raw,if=none',
+                # '-blockdev', f'driver=vfat,file=fat:ro:{self._conf["share_dir_as_fat"]},id=vfat,format=raw,if=none',
                 # '-device', 'usb-storage,drive=vfat',
 
-                #'-hda', f'fat:ro:{self._conf["ro_mount"]}',
+                #'-hda', f'fat:ro:{self._conf["share_dir_as_fat"]}',
 
-                '-drive', f'file=fat:rw:{self._conf["ro_mount"]},format=raw,media=disk',
+                '-drive', f'file=fat:rw:{self._conf["share_dir_as_fat"]},format=raw,media=disk',
             ]
 
-        
+        if 'share_dir_as_fsd' in self._conf:
+            dir_abs = os.path.abspath(self._conf['share_dir_as_fsd'])
+            args += [
+                '-fsdev', f'local,security_model=passthrough,id=fsdev0,path={dir_abs}',
+                '-device', 'virtio-9p-pci,fsdev=fsdev0,mount_tag=hostshare',
+            ]
         # network:
         use_nic = self._conf['nic'] if 'nic' in self._conf else True
         use_nic_virtio = self._conf['nic_virtio'] if 'nic_virtio' in self._conf else True
