@@ -7,6 +7,12 @@ ram: 4G
 # boot mode: False=BIOS, True=EFI. Default: False
 efi: False
 
+# boot menu. Default: False. 
+# If menu is disabled, the boot disk is selected as follows:
+#  in install mode: first boot from CD, on next reboot from HDD
+#  in run mode: boot from first HDD in the 'disk' list
+bootmenu: False
+
 # disk image file or /dev/ file
 disk: system.qcow2
 

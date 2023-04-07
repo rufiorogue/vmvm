@@ -171,17 +171,24 @@ class App:
             args += [ '-nic', f'user,ipv6=off,model={nic_model}' ]
         else:
             args += [ '-nic', 'none' ]
-
-        
+    def _boot_args(self, mode: str):
+        args = []
+        enable_boot_menu = self._conf['bootmenu'] if 'bootmenu' in self._conf else False
+        if enable_boot_menu:
+            args = [ '-boot', 'menu=on', ]
+        else:
+            if mode == 'install':
+                # boot from CD-ROM first, switch back to default order after reboot
+                args = [ '-boot', 'once=d', ]
+            elif mode == 'run':
+                args = [ '-boot', 'order=c', ]
         return args
 
 
     def act_install(self):
         info('action: installing operating system inside vm')
-        args = self._common_args()
-        args += [
-            '-boot', 'once=d',  # boot from CD-ROM first, switch back to default order after reboot
-        ]
+        args = self._common_args() + self._boot_args(mode='install')
+
         for isofile in _wrap_scalar_as_list(self._conf['os_install']):
             args += ['-drive', f'file={isofile},media=cdrom' ]
         self._exec('qemu-system-x86_64', args)
@@ -189,10 +196,8 @@ class App:
 
     def act_run(self):
         info('action: running vm')
-        args = self._common_args()
-        args += [
-            '-boot', 'order=cd',
-        ]
+        args = self._common_args() + self._boot_args(mode='run')
+
         self._exec('qemu-system-x86_64', args)
 
 
