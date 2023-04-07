@@ -1,5 +1,5 @@
 # vmvm
 
-A very simple shell for setting up and running QEMU virtual machines from YAML config.
+A QEMU wrapper for mortals. Setting up/running VMs from YAML config file with very simple syntax.
 
 Run without parameters for usage info.
