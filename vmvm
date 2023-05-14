@@ -223,21 +223,21 @@ class App:
 def usage():
     print('A very simple shell for setting up and running QEMU virtual machines from yaml config')
     print()
-    print('usage: vmvm ACTION VM_CONF_DIR')
+    print('usage: vmvm ACTION [VM_CONF_DIR]')
     print()
     print('  ACTION = init | install | run')
     print('    init        create virtual disks')
     print('    install     boot from os_install device to install operating system')
     print('    run         boot from first hard disk')
     print()
-    print('  VM_CONF_DIR   dir must contain vmconfig.yml. All paths in config are relative to this dir')
+    print('  VM_CONF_DIR   dir must contain vmconfig.yml. All paths in config are relative to this dir. Uses current dir by default.')
 
 
 def main():
     logging.basicConfig(format='%(asctime)s  %(levelname)s  %(message)s', level=logging.INFO)
 
     cmd = None
-    dir_name = None
+    dir_name = './'
     for arg in sys.argv[1:]:
         if arg in ['init', 'install', 'run']:
             cmd = arg
