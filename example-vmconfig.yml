@@ -22,10 +22,14 @@ disk: system.qcow2
 #     - system.qcow2
 #     - user_data.qcow2
 
-# Use virtio-scsi for disk emulation?
-# Applicable only to image file based disks
-# Default=True
-disk_virtio: True
+# Use virtio-blk, virtio-scsi or disable virtio for disk emulation?
+# Applicable only to image file based disks.
+#
+# NOTE: do not use 'blk' if more than few disks, as this will create too many controllers on PCIe bus.
+# In this case use 'scsi'.
+#
+# Default=blk, available=[blk, scsi, none]
+disk_virtio: blk
 
 # will mount these images in "install" mode
 os_install:

@@ -118,35 +118,37 @@ class App:
 
 
 
-        def generate_blockdev_desc(idx: int, filename: str,use_virtio_scsi: bool) -> list[str]:
-            # d = [ '-drive', f'file={filename},if=virtio,drive=hd{idx},bootindex={idx+1}' ]
+        def generate_blockdev_desc(idx: int, filename: str,disk_virtio_mode: str) -> list[str]:
             if '/dev' in filename:
                 d = [
                     '-drive', f'file={filename},format=raw,media=disk',
                 ]
-            else:
-                image_format = 'qcow2' if 'qcow2' in filename else 'raw'
-                d = [
-                    '-blockdev', f'driver=file,node-name=hd{idx}_file,filename={filename}',
-                    '-blockdev', f'driver={image_format},file=hd{idx}_file,node-name=hd{idx}',
+            else:                
+                d = [ 
+                    '-drive', f'file={filename},if=none,id=hd{idx}',
                 ]
-                if use_virtio_scsi:
+
+                if disk_virtio_mode == 'scsi':
                     d += [
-                        '-device', f'scsi-hd,drive=hd{idx},bootindex={idx+1}'
+                        '-device', f'scsi-hd,drive=hd{idx},bootindex={idx+1}',
                     ]
+                elif disk_virtio_mode == 'blk':
+                    d += [
+                        '-device', f'virtio-blk-pci,id=virtblk{idx},num-queues=4,drive=hd{idx},bootindex={idx+1}',
+                        ]
                 else:
                     d += [
-                        '-device', f'ide-hd,drive=hd{idx},bootindex={idx+1}'
+                        '-device', f'ide-hd,drive=hd{idx},bootindex={idx+1}',
                     ]
             return d
-        use_virtio_scsi =self._conf['disk_virtio'] if 'disk_virtio' in self._conf else True
-        if use_virtio_scsi:
-            args += [ '-device', 'virtio-scsi-pci' ] # add virtio controller
+        disk_virtio_mode =self._conf['disk_virtio'] if 'disk_virtio' in self._conf else 'blk'
+        if disk_virtio_mode == 'scsi':
+            args += [ '-device', 'virtio-scsi-pci,id=scsi0,num_queues=4' ]
         if 'disk' in self._conf:
-            args += generate_blockdev_desc(0, self._conf['disk'], use_virtio_scsi)
+            args += generate_blockdev_desc(0, self._conf['disk'], disk_virtio_mode)
         elif 'disks' in self._conf:
             for idx in range(len(self._conf['disks'])):
-                args += generate_blockdev_desc(idx, self._conf['disks'][idx], use_virtio_scsi)
+                args += generate_blockdev_desc(idx, self._conf['disks'][idx], disk_virtio_mode)
 
         if 'usb' in self._conf:
             for usb_dev in _wrap_scalar_as_list(self._conf['usb']):
