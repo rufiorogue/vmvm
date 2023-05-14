@@ -132,7 +132,6 @@ class App:
                 ]
                 if use_virtio_scsi:
                     d += [
-                        '-device', 'virtio-scsi-pci',
                         '-device', f'scsi-hd,drive=hd{idx},bootindex={idx+1}'
                     ]
                 else:
@@ -141,6 +140,8 @@ class App:
                     ]
             return d
         use_virtio_scsi =self._conf['disk_virtio'] if 'disk_virtio' in self._conf else True
+        if use_virtio_scsi:
+            args += [ '-device', 'virtio-scsi-pci' ] # add virtio controller
         if 'disk' in self._conf:
             args += generate_blockdev_desc(0, self._conf['disk'], use_virtio_scsi)
         elif 'disks' in self._conf:
