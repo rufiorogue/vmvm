@@ -1,0 +1,26 @@
+# loosely based upon
+# https://github.com/ServerContainers/samba/blob/master/docker-compose.yml
+
+
+version: '3'
+services:
+  samba:
+    image: ghcr.io/servercontainers/samba
+    network_mode: host
+    cap_add:
+      - CAP_NET_ADMIN
+    environment:
+      #MODEL: 'TimeCapsule'
+      AVAHI_NAME: QemuSharedFolder
+
+      SAMBA_CONF_LOG_LEVEL: 3
+
+      ACCOUNT_user: user
+      UID_user: 1001
+
+      # uncomment to disable optional services
+      #WSDD2_DISABLE: 1
+      #AVAHI_DISABLE: 1
+      SAMBA_VOLUME_CONFIG_useronly: "[shared]; path=/shared; valid users = user; guest ok = no; read only = no; browseable = yes"  
+    volumes:
+      - ../shared:/shared
