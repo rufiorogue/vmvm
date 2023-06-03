@@ -4,9 +4,6 @@ import logging, yaml, subprocess, io, sys, os, socket
 from logging import info,warning,error
 
 
-def _wrap_scalar_as_list(scalar_or_list_value):
-    return scalar_or_list_value if type(scalar_or_list_value) == list else [scalar_or_list_value]
-
 def is_port_free(port: int) -> bool:
     s = socket.socket()
     try:
@@ -25,7 +22,47 @@ def find_next_free_port(port: int) -> int:
 class App:
     def __init__(self, conf_dir: str):
         os.chdir(conf_dir)
-        self._conf = yaml.safe_load(open('vmconfig.yml', 'r'))
+        conf = yaml.safe_load(open('vmconfig.yml', 'r'))
+
+        self._load_conf(conf)
+
+
+
+    def _load_conf(self, conf: dict) -> None:
+
+
+        def _wrap_scalar_as_list(scalar_or_list_value):
+            return scalar_or_list_value if type(scalar_or_list_value) == list else [scalar_or_list_value]
+
+        if 'disk' in conf:
+            self.first_disk = conf['disk']
+        elif 'disks' in conf:
+            self.first_disk = conf['disks'][0]
+        else:
+            self.first_disk = None
+
+        if 'disk' in conf:
+            self.disks = [conf['disk']]
+        elif 'disks' in conf:
+            self.disks = conf['disks']
+        else:
+            self.disks = []
+
+        self.name = conf['name']
+        self.cpus = conf['cpus']
+        self.ram = conf['ram']
+        self.spice_port = conf['spice_port'] if 'spice_port' in conf else 'auto'
+        self.boot_efi = conf['efi'] if 'efi' in conf else False
+        self.disk_virtio_mode = conf['disk_virtio'] if 'disk_virtio' in conf else 'blk'
+        self.usbdevices =_wrap_scalar_as_list(conf['usb']) if 'usb' in conf else []
+        self.share_dir_as_fat = conf['share_dir_as_fat'] if 'share_dir_as_fat' in conf else None
+        self.share_dir_as_fsd = conf['share_dir_as_fsd'] if 'share_dir_as_fsd' in conf else None
+        self.use_nic = conf['nic'] if 'nic' in conf else True
+        self.use_nic_virtio = conf['nic_virtio'] if 'nic_virtio' in conf else True
+        self.nic_forward_ports = conf['nic_forward_ports'] if 'nic_forward_ports' in conf else None
+        self.enable_boot_menu = conf['bootmenu'] if 'bootmenu' in conf else False
+        self.isoimages = _wrap_scalar_as_list(conf['os_install']) if 'os_install' in conf else []
+
 
     def _exec(self, executable_name: str, args: list[str]) -> int:
         real_args = [executable_name] + args
@@ -41,33 +78,27 @@ class App:
 
     def act_init(self):
         info('action: initializing vm')
-        
-        if 'disk' in self._conf:
-            first_disk = self._conf['disk']
-        elif 'disks' in self._conf:
-            first_disk = self._conf['disks'][0]
-        else:
-            first_disk = None
-        if first_disk is not None:
-            if os.path.exists(first_disk):
-                error('disk already exists, not overwriting: %s', first_disk)
+
+        if self.first_disk is not None:
+            if os.path.exists(self.first_disk):
+                error('disk already exists, not overwriting: %s', self.first_disk)
                 return
             else:
-                self._exec('qemu-img', ['create', '-f', 'qcow2', first_disk, '100G'])
+                self._exec('qemu-img', ['create', '-f', 'qcow2', self.first_disk, '100G'])
         else:
             error('no disks configured?')
 
     def _common_args(self):
-        spice_port = self._conf['spice_port'] if 'spice_port' in self._conf else 'auto'
+        spice_port = self.spice_port
         if spice_port == 'auto':
             spice_port = find_next_free_port(5900)
         info(f'SPICE server running on localhost:{spice_port}')
         args = [
-            '-name', f"vm:{self._conf['name']} spice:{spice_port}",
+            '-name', self.name,
             '-machine', 'q35,accel=kvm',
             '-cpu', 'host',
-            '-smp', str(self._conf['cpus']),
-            '-m', self._conf['ram'],
+            '-smp', str(self.cpus),
+            '-m', self.ram,
 
             # display:
             '-display', 'gtk',
@@ -98,8 +129,7 @@ class App:
             #'-localtime',
         ]
 
-        boot_efi = self._conf['efi'] if 'efi' in self._conf else False
-        if boot_efi:
+        if self.boot_efi:
             edk2_path = '/usr/share/edk2/x64/'
 
             if os.path.exists(f'{edk2_path}OVMF_CODE.fd') and os.path.exists(f'{edk2_path}OVMF_VARS.fd'):
@@ -141,33 +171,29 @@ class App:
                         '-device', f'ide-hd,drive=hd{idx},bootindex={idx+1}',
                     ]
             return d
-        disk_virtio_mode =self._conf['disk_virtio'] if 'disk_virtio' in self._conf else 'blk'
-        if disk_virtio_mode == 'scsi':
+
+        if self.disk_virtio_mode == 'scsi':
             args += [ '-device', 'virtio-scsi-pci,id=scsi0,num_queues=4' ]
-        if 'disk' in self._conf:
-            args += generate_blockdev_desc(0, self._conf['disk'], disk_virtio_mode)
-        elif 'disks' in self._conf:
-            for idx in range(len(self._conf['disks'])):
-                args += generate_blockdev_desc(idx, self._conf['disks'][idx], disk_virtio_mode)
+        for idx in range(len(self.disks)):
+            args += generate_blockdev_desc(idx, self.disks[idx], self.disk_virtio_mode)
 
-        if 'usb' in self._conf:
-            for usb_dev in _wrap_scalar_as_list(self._conf['usb']):
-                vendor_id,product_id = usb_dev.split(':')
-                args += [ '-device', f'usb-host,vendorid=0x{vendor_id},productid=0x{product_id}' ]
+        for usb_dev in self.usbdevices:
+            vendor_id,product_id = usb_dev.split(':')
+            args += [ '-device', f'usb-host,vendorid=0x{vendor_id},productid=0x{product_id}' ]
 
 
-        if 'share_dir_as_fat' in self._conf:
+        if self.share_dir_as_fat is not None:
             args += [
-                # '-blockdev', f'driver=vfat,file=fat:ro:{self._conf["share_dir_as_fat"]},id=vfat,format=raw,if=none',
+                # '-blockdev', f'driver=vfat,file=fat:ro:{self.share_dir_as_fat},id=vfat,format=raw,if=none',
                 # '-device', 'usb-storage,drive=vfat',
 
-                #'-hda', f'fat:ro:{self._conf["share_dir_as_fat"]}',
+                #'-hda', f'fat:ro:{self.share_dir_as_fat}',
 
-                '-drive', f'file=fat:rw:{self._conf["share_dir_as_fat"]},format=raw,media=disk',
+                '-drive', f'file=fat:rw:{self.share_dir_as_fat},format=raw,media=disk',
             ]
 
-        if 'share_dir_as_fsd' in self._conf:
-            dir_abs = os.path.abspath(self._conf['share_dir_as_fsd'])
+        if self.share_dir_as_fsd is not None:
+            dir_abs = os.path.abspath(self.share_dir_as_fsd)
             args += [
                 '-fsdev', f'local,security_model=passthrough,id=fsdev0,path={dir_abs}',
                 '-device', 'virtio-9p-pci,fsdev=fsdev0,mount_tag=hostshare',
@@ -175,12 +201,11 @@ class App:
 
         # network:
         # https://wiki.qemu.org/Documentation/Networking
-        use_nic = self._conf['nic'] if 'nic' in self._conf else True
-        use_nic_virtio = self._conf['nic_virtio'] if 'nic_virtio' in self._conf else True
-        if use_nic:
-            nic_model = 'virtio-net-pci' if use_nic_virtio else 'e1000'
-            if 'nic_forward_ports' in self._conf:
-                hostfwd_list = list(map(lambda bind_spec: f"hostfwd=tcp::{bind_spec['host']}-:{bind_spec['guest']}" , self._conf['nic_forward_ports']))
+    
+        if self.use_nic:
+            nic_model = 'virtio-net-pci' if self.use_nic_virtio else 'e1000'
+            if self.nic_forward_ports is not None:
+                hostfwd_list = list(map(lambda bind_spec: f"hostfwd=tcp::{bind_spec['host']}-:{bind_spec['guest']}" , self.nic_forward_ports))
                 hostfwd = ','+','.join(hostfwd_list)
             else:
                 hostfwd = ''            
@@ -192,8 +217,7 @@ class App:
     
     def _boot_args(self, mode: str):
         args = []
-        enable_boot_menu = self._conf['bootmenu'] if 'bootmenu' in self._conf else False
-        if enable_boot_menu:
+        if self.enable_boot_menu:
             args = [ '-boot', 'menu=on', ]
         else:
             if mode == 'install':
@@ -207,8 +231,7 @@ class App:
     def act_install(self):
         info('action: installing operating system inside vm')
         args = self._common_args() + self._boot_args(mode='install')
-
-        for isofile in _wrap_scalar_as_list(self._conf['os_install']):
+        for isofile in self.isoimages:
             args += ['-drive', f'file={isofile},media=cdrom' ]
         self._exec('qemu-system-x86_64', args)
 
