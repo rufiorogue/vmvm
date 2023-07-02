@@ -156,6 +156,12 @@ Values: `hda`, `ac97`, `sb16`, `none`
 ### `spice_port`
 (Optional) port for the SPICE server. If not provided or set to `auto`, will find the next available port starting from 5900.
 
+### `control_socket`
+(Optional) create QMP control socket named `qmp.sock` in VM current directory. You can use it to control the VM with
+[`qmp-shell`](https://qemu.readthedocs.io/projects/python-qemu-qmp/en/latest/man/qmp_shell.html) or `qmp-tui` commands
+from [`python-qemu-qmp`](https://pypi.org/project/qemu.qmp/) package.
+
+
 ## Handy SMB server
 
 As an alternative to `share_...` config options,  a docker compose is provided in subdirectory `smb` to spin up a SMB server,

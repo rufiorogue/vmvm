@@ -103,6 +103,7 @@ class App:
             self.soundcard_model = None
 
         self.vga = conf['vga'] if 'vga' in conf else 'qxl'
+        self.control_socket = conf['control_socket'] if 'control_socket' in conf else False
 
         self.isoimages = _wrap_scalar_as_list(conf['os_install']) if 'os_install' in conf else []
         self.local_hw_arch = subprocess.check_output(['uname', '-m']).decode().rstrip()
@@ -171,6 +172,11 @@ class App:
             #'-balloon', 'virtio',
             #'-localtime',
         ]
+
+        if self.control_socket:
+            args += [ '-qmp', 'unix:qmp.sock,server,nowait', ]
+
+
 
         # Sound Card (and PC speaker)
         match self.soundcard_model:
