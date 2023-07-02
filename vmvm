@@ -143,7 +143,7 @@ class App:
             '-display', 'gtk,show-cursor=off',
             #'-display', f'sdl,gl=off',
 
-            # SPICE:           
+            # SPICE:
             '-spice', f'port={spice_port},disable-ticketing=on,gl=off',
             '-device', 'virtio-serial-pci',
             '-device', 'virtserialport,chardev=spicechannel0,name=com.redhat.spice.0',
@@ -154,7 +154,7 @@ class App:
         ]
 
         # Sound Card (and PC speaker)
-        if self.machine == 'pc': 
+        if self.machine == 'pc':
             args += [
                 # Sound Blaster 16
                 '-audiodev', 'pa,id=snd0', '-device', 'sb16,audiodev=snd0',
@@ -256,8 +256,8 @@ class App:
                 d = [
                     '-drive', f'file={filename},format=raw,media=disk',
                 ]
-            else:                
-                d = [ 
+            else:
+                d = [
                     '-drive', f'file={filename},if=none,id=hd{idx}',
                 ]
 
@@ -306,19 +306,19 @@ class App:
 
         # net
         # https://wiki.qemu.org/Documentation/Networking
-    
+
         if self.nic_model is not None:
             if self.nic_forward_ports is not None:
                 hostfwd_list = list(map(lambda bind_spec: f"hostfwd=tcp::{bind_spec['host']}-:{bind_spec['guest']}" , self.nic_forward_ports))
                 hostfwd = ','+','.join(hostfwd_list)
             else:
-                hostfwd = ''            
+                hostfwd = ''
             args += ['-netdev', f'user,id=net0{hostfwd}', '-device', f'{self.nic_model},netdev=net0' ]
         else:
             args += [ '-nic', 'none' ]
-        
+
         return args
-    
+
     def _boot_args(self, mode: str):
         args = []
         if self.enable_boot_menu:
