@@ -92,7 +92,8 @@ Values: `i386`, `x86_64`, `aarch64`
 Disk image file. Can also be /dev/... file to pass through a host block device. (Optional) 'disks' is an alias for 'disk'. Both can be a single string or list of strings
 
 ### `disk_virtio`
-(Optional) for disk emulation, specify `blk` to use `virtio-blk`, `scsi` to use `virtio-scsi` or `none` to disable virtio and emulate IDE controller instead. Applicable only to image file based disks. `blk` theoretically yields best performance. `scsi` is best for large disk arrays. `none` for legacy OSes.
+(Optional) for disk emulation, specify `blk` to use `virtio-blk`, `scsi` to use `virtio-scsi` or `none` to disable virtio and emulate IDE controller instead.
+Applicable only to image file based disks. `blk` theoretically yields best performance. `scsi` is best for large disk arrays. `none` for legacy OSes.
 
 **Performance tip:** `disk_virtio` = `blk` will create one controller for each disk on PCIe bus, so do not use `blk` if more than a few disks. Use `scsi` in such case.
 
@@ -111,7 +112,8 @@ SUBSYSTEM=="usb", ATTR{idVendor}=="xxxx", ATTR{idProduct}=="xxxx", MODE="0666"
 ```
 
 ### `share_dir_as_fsd`
-(Optional) Share a host directory with [virtiofsd](https://virtio-fs.gitlab.io/index.html). Use with Linux guests. This method provides best performance as well as other useful virtualisation features.
+(Optional) Share a host directory with [virtiofsd](https://virtio-fs.gitlab.io/index.html). Use with Linux guests. This method provides best performance
+as well as other useful virtualisation features.
 
 You can mount the directory on the guest as follows:
 ```
@@ -121,7 +123,8 @@ mount -t 9p -o trans=virtio,version=9p2000.L hostshare /mnt/share
 Example: `share_dir_as_fsd: /home/user/shared`.  Path can be relative to current directory.
 
 ### `share_dir_as_fat`
-(Optional) Map a host directory as a [virtual FAT filesystem](https://www.qemu.org/docs/master/system/images.html#virtual-fat-disk-images)  on guest. Do not use non-ASCII filenames or attempt to write to the FAT directory on the host system while accessing it with the guest system.
+(Optional) Map a host directory as a [virtual FAT filesystem](https://www.qemu.org/docs/master/system/images.html#virtual-fat-disk-images)  on guest.
+Do not use non-ASCII filenames or attempt to write to the FAT directory on the host system while accessing it with the guest system.
 
 ### `nic`
 (Optional) allows to override or disable default network interface card selected by machine type.
@@ -155,7 +158,8 @@ Values: `hda`, `ac97`, `sb16`, `none`
 
 ## Handy SMB server
 
-As an alternative to `share_...` config options,  a docker compose is provided in subdirectory `smb` to spin up a SMB server, to be accessed from guest. Refer to respective [README](smb/README.md).
+As an alternative to `share_...` config options,  a docker compose is provided in subdirectory `smb` to spin up a SMB server,
+to be accessed from guest. Refer to respective [README](smb/README.md).
 
 ## Contributing
 
