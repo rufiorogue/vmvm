@@ -1,0 +1,66 @@
+---
+
+default:
+  arch: x86_64
+  cpus: 4
+  ram: 8G
+  vga: qxl
+  nic: virtio
+  disk_virtio: blk
+  sound: hda
+  efi: False
+arm64:
+  arch: aarch64
+  cpus: 4
+  ram: 4G
+  vga: virtio-gpu-pci
+  nic: e1000
+  disk_virtio: scsi
+  sound: hda
+  efi: True
+w10:
+  # copy of default
+  arch: x86_64
+  cpus: 4
+  ram: 8G
+  vga: qxl
+  nic: virtio
+  disk_virtio: blk
+  sound: hda
+  efi: False
+w11:
+  arch: x86_64
+  cpus: 4
+  ram: 8G
+  vga: qxl
+  nic: virtio
+  disk_virtio: blk
+  sound: hda
+  efi: True
+  tpm: True
+  secureboot: True
+wxp:
+  arch: i386
+  cpus: 4
+  ram: 512M
+  vga: qxl
+  nic: rtl8139
+  disk_virtio: none
+  sound: ac97
+w2k:
+  arch: i386
+  cpus: 1
+  ram: 128M
+  vga: cirrus
+  nic: rtl8139
+  disk_virtio: none
+  sound: ac97
+w98:
+  arch: i386
+  cpus: 1
+  ram: 128M
+  vga: cirrus
+  nic: rtl8139
+  disk_virtio: none
+  sound: sb16
+

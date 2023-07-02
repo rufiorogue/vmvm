@@ -5,6 +5,12 @@ from logging import info,warning,error
 from lib.tpm_manager import TPMManager
 
 
+def get_local_dir():
+    return os.path.dirname(os.path.realpath(__file__))
+
+presets = yaml.safe_load(open(get_local_dir()+'/presets.yml', 'r'))
+
+
 def is_port_free(port: int) -> bool:
     s = socket.socket()
     try:
@@ -43,12 +49,18 @@ class App:
 
         self.first_disk = self.disks[0] if len(self.disks) > 0 else None
 
+        current_preset = presets[conf['preset']] if 'preset' in conf else presets['default']
+
+        for k,v in current_preset.items():
+            # overwrite with preset value if not set in conf
+            if k not in conf:
+                conf[k] = v
 
         self.name = conf['name']
         self.cpus = conf['cpus']
         self.ram = conf['ram']
-        self.arch = conf['arch'] if 'arch' in conf else 'x86_64'
-        self.machine = conf['machine'] if 'machine' in conf else  {
+        self.arch = conf['arch']
+        self.machine =  {
             'i386':    'pc',  #  machine type corresponding to late 90s - early 2000s era
             'x86_64':  'q35',
             'aarch64': 'virt',
@@ -77,16 +89,23 @@ class App:
                 case _:
                     self.nic_model = conf['nic']
         else:
-            match self.machine:
-                case 'pc':
-                    self.nic_model = 'rtl8139'
-                case _:
-                    self.nic_model = 'virtio-net-pci'
+            self.nic_model = None
 
         self.nic_forward_ports = conf['nic_forward_ports'] if 'nic_forward_ports' in conf else None
+
+        if 'sound' in conf:
+            match conf['sound']:
+                case 'none':
+                    self.soundcard_model = None
+                case _:
+                    self.soundcard_model = conf['sound']
+        else:
+            self.soundcard_model = None
+
+        self.vga = conf['vga'] if 'vga' in conf else 'qxl'
+
         self.isoimages = _wrap_scalar_as_list(conf['os_install']) if 'os_install' in conf else []
         self.local_hw_arch = subprocess.check_output(['uname', '-m']).decode().rstrip()
-
 
 
     def _exec(self, executable_name: str, args: list[str]) -> int:
@@ -154,17 +173,15 @@ class App:
         ]
 
         # Sound Card (and PC speaker)
-        if self.machine == 'pc':
-            args += [
-                # Sound Blaster 16
-                '-audiodev', 'pa,id=snd0', '-device', 'sb16,audiodev=snd0',
-                '-audiodev', 'pa,id=spk0', '-machine', 'pcspk-audiodev=spk0',
-            ]
-        else:
-            args += [
-                # Intel HD Audio
-                '-audiodev', 'pa,id=snd0', '-device', 'ich9-intel-hda', '-device', 'hda-output,audiodev=snd0',
-            ]
+        match self.soundcard_model:
+            case 'spk':
+                args += [ '-audiodev', 'pa,id=spk0', '-machine', 'pcspk-audiodev=spk0',   ]
+            case 'sb16':
+                args += [ '-audiodev', 'pa,id=snd0', '-device', 'sb16,audiodev=snd0', ]
+            case 'ac97':
+                args += [ '-audiodev', 'pa,id=snd0', '-device', 'ac97,audiodev=snd0', ]
+            case 'hda':
+                args += ['-audiodev', 'pa,id=snd0', '-device', 'ich9-intel-hda', '-device', 'hda-output,audiodev=snd0',]
 
         # USB
         if self.machine == 'pc':
@@ -189,26 +206,14 @@ class App:
         elif self.local_hw_arch == 'x86_64'  and self.arch == 'i386':
               args += [
                 '-enable-kvm',
-                '-cpu', 'pentium3',
+                '-cpu', 'host',
             ]
         else:
             args += [
                 '-cpu', 'max',
             ]
 
-        # VGA:
-        if self.arch == 'i386':
-            args += [
-                '-vga', 'cirrus',
-            ]
-        elif self.arch == 'x86_64':
-            args += [
-                '-vga', 'qxl',
-            ]
-        elif self.arch == 'aarch64':
-            args += [
-                '-device',  'virtio-gpu-pci',
-            ]
+        args += [ '-vga', self.vga ]
 
         # EFI
         if self.enable_efi:
