@@ -348,6 +348,7 @@ class App:
         info('action: installing operating system inside vm')
         args = self._common_args() + self._boot_args(mode='install')
         for isofile in self.isoimages:
+            isofile = isofile.replace(',', ',,') # double every ',' to escape it
             args += ['-drive', f'file={isofile},media=cdrom' ]
         self._exec(f'qemu-system-{self.arch}', args)
         self._shutdown_tpm()
