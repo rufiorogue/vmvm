@@ -1,3 +1,9 @@
+# Arch specific stuff
+pkg/*
+src/*
+*.tar.zst
+*.tar.gz
+
 #Emacs
 *~
 
