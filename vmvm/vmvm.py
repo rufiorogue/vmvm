@@ -1,14 +1,9 @@
-#!/usr/bin/env python
-
 import logging, yaml, subprocess, io, sys, os, socket
 from logging import info,warning,error
-from lib.tpm_manager import TPMManager
+from .lib.tpm_manager import TPMManager
 
 
-def get_local_dir():
-    return os.path.dirname(os.path.realpath(__file__))
-
-presets = yaml.safe_load(open(get_local_dir()+'/presets.yml', 'r'))
+presets = yaml.safe_load(open(os.path.join(os.getcwd(), "presets.yml"), 'r'))
 
 
 def is_port_free(port: int) -> bool:
