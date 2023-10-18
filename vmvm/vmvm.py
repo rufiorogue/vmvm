@@ -3,7 +3,7 @@ from logging import info,warning,error
 from .lib.tpm_manager import TPMManager
 
 
-presets = yaml.safe_load(open(os.path.join(os.getcwd(), "presets.yml"), 'r'))
+presets = yaml.safe_load(open(os.path.join(os.getcwd(), 'presets.yml'), 'r'))
 
 
 def is_port_free(port: int) -> bool:
