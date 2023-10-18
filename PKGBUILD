@@ -3,11 +3,11 @@ pkgver=0.1.0
 pkgrel=1
 pkgdesc="QEMU wrapper and shell"
 arch=('any')
-url="https://github.com/zatevakhin/vmvm"
+url="https://github.com/roovio/vmvm"
 license=('MIT')
 depends=('python' 'python-yaml')
 makedepends=('git' 'poetry')
-source=("$pkgname-$pkgver.tar.gz::https://github.com/zatevakhin/$pkgname/archive/$pkgver.tar.gz")
+source=("$pkgname-$pkgver.tar.gz::https://github.com/roovio/$pkgname/archive/$pkgver.tar.gz")
 sha256sums=('SKIP')
 
 build() {
