@@ -16,6 +16,35 @@ The goal of this project is simplify the task of running QEMU for mere mortals. 
 - QEMU
 - pyyaml
 
+## Installation
+
+This project has been wrapped into a Python package using `poetry` and includes a PKGBUILD file for AUR compatibility.
+
+### For Python Package
+Run `poetry build -v -n` to build the Python package.
+
+### For Arch Linux Package
+Run `makepkg -sri` to build and install the Arch Linux package.
+
+### Alternative Installation Method
+Install the Python package directly from the repository using pip:
+```bash
+pip install git+https://github.com/roovio/vmvm
+```
+
+## Development
+
+### Setting Up the Development Environment
+1. Install the project dependencies using Poetry: `poetry install --no-root`.
+2. If some changes are done in `pyproject.toml`, then `poetry lock` should be used to generate an updated `poetry.lock` file.
+3. After making changes in the code, execute `poetry install` to install the package in a virtual environment.
+4. Perform tests to validate implemented features.
+
+### Testing
+1. Build the Python package: `poetry build`.
+2. Build and install the Arch Linux package (if applicable): `makepkg -sri`.
+
+
 ## Usage
 
 To use VMVM, you need to create a YAML configuration file named `vmconfig.yml` in the directory from which you'll run the script.
