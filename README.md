@@ -1,6 +1,6 @@
-# VMVM - QEMU wrapper and shell
+# VMVM - a user friendly QEMU frontend
 
-The goal of this project is simplify the task of running QEMU for mere mortals. It is achieved by hiding complexity of QEMU command line under a simpler facade.
+Running QEMU is hard for mere mortals. It has a lot of options and even simplest tasks require passing a lot of them to fully define the virtual environment. With this app a lot of complexity can be hidden away under a simple facade of a small config file.
 
 ## Features
 
@@ -12,9 +12,9 @@ The goal of this project is simplify the task of running QEMU for mere mortals. 
 
 ## Dependencies
 
-- Python 3
 - QEMU
-- pyyaml
+- Python 3
+- python-yaml
 
 ## Installation
 
@@ -32,26 +32,14 @@ Install the Python package directly from the repository using pip:
 pip install git+https://github.com/roovio/vmvm
 ```
 
-## Development
-
-### Setting Up the Development Environment
-1. Install the project dependencies using Poetry: `poetry install --no-root`.
-2. If some changes are done in `pyproject.toml`, then `poetry lock` should be used to generate an updated `poetry.lock` file.
-3. After making changes in the code, execute `poetry install` to install the package in a virtual environment.
-4. Perform tests to validate implemented features.
-
-### Testing
-1. Build the Python package: `poetry build`.
-2. Build and install the Arch Linux package (if applicable): `makepkg -sri`.
-
-
 ## Usage
 
-To use VMVM, you need to create a YAML configuration file named `vmconfig.yml` in the directory from which you'll run the script.
+First you need to create a YAML configuration file named `vmconfig.yml`, presumably in a dedicated directory for the VM but this is not required.
 
 Here is an example of a configuration file:
 
 ```yaml
+preset: w10
 name: windows10
 cpus: 4
 ram: 8G
@@ -60,39 +48,43 @@ os_install:
     - Win10_21H2_English_x64.iso
 ```
 
+Then invoke `vmvm` as follows:
 
-After you've created your configuration file, you can perform various actions on your virtual machine.
-
-Action syntax:
 ```
-<path_to_script> ACTION
+vmvm ACTION [CURRENT_DIR]
 ```
 
-| Action | Description |
-| ------- | ----------- |
-| `init`  | Initialize a new virtual machine. This will create a 100G `my_disk.qcow2` file (file name is derived from first entry in `disk` or `disks` config option. |
-| `install` | Install an operating system on your virtual machine |
-| `run` |  Run your virtual machine |
+CURRENT_DIR is path to `vmconfig.yml` location. If not specified, current working directory is used.
+Note that all non-absolute paths in the config are relative to `vmconfig.yml` location.
 
-The only difference between `run` and `install` actions is that `install` will pass ISO images from `os_install` config option to QEMU, while `run` will ignore them.
+| Action    | Description |
+| --------- | ----------- |
+| `init`    | Create an image file for the first HDD in the config (if does not exist). In the example above `system.qcow2` will be created |
+| `install` | Run VM, boot from CD |
+| `run`     | Run VM, boot from first HDD |
 
-## How boot disk is selected
+`install` and `run` both run the VM however the difference is how the boot device is selected.
 
-If menu is disabled, the boot disk is selected depending on ACTION:
--  if ACTION is `install`, first boot - from CD, on reboot - from hard disk
--  if ACTION is `run`, always boot from first hard disk in the `disks` list
+`install`:
+- first boot - from CD, on reboot - from first HDD
+- exists merely for convenience. Typically you use it only once, to install the OS
+
+`run`:
+- always boot from first HDD
+- `os_install` is ignored and thus no CD images are mounted
+- if you need your ISO images after installation you have to use `install` action instead of `run` every time
 
 ## Configuration Options
 
 ### `name`
-Name of your virtual machine
+(Required) Name of your virtual machine
 
 ### `preset`
 (Optional) One parameter to configure many options at once, to optimize for particular guest OS.
 
-Values: `default`, `arm64`, `w10`, `w11`, `wxp`, `w2k`, `w98`.
+If not specified, `default` preset is used.
 
-See [presets.yml](presets.yml)
+See [presets.yml](vmvm/presets.yml)
 
 ### `cpus`
 (Optional) Number of CPUs for your virtual machine
@@ -118,7 +110,7 @@ Values: `i386`, `x86_64`, `aarch64`
 (Optional) enable boot menu
 
 ### `disk` (alias `disks`)
-Disk image file. Can also be /dev/... file to pass through a host block device. (Optional) 'disks' is an alias for 'disk'. Both can be a single string or list of strings
+(Required) Disk image file. Can also be /dev/... file to pass through a host block device. (Optional) `disks` is an alias for `disk`. Both can be a single string or list of strings
 
 ### `disk_virtio`
 (Optional) for disk emulation, specify `blk` to use `virtio-blk`, `scsi` to use `virtio-scsi` or `none` to disable virtio and emulate IDE controller instead.
@@ -194,11 +186,23 @@ from [`python-qemu-qmp`](https://pypi.org/project/qemu.qmp/) package.
 ## Handy SMB server
 
 As an alternative to `share_...` config options,  a docker compose is provided in subdirectory `smb` to spin up a SMB server,
-to be accessed from guest. Refer to respective [README](smb/README.md).
+to be accessed from guest. Refer to the respective [README](smb/README.md).
 
 ## Contributing
 
 If you would like to contribute to this project, please feel free to submit a pull request or open an issue on GitHub.
+
+### Setting Up the Development Environment
+
+1. Install the project dependencies using Poetry: `poetry install --no-root`.
+2. If some changes are done in `pyproject.toml`, then `poetry lock` should be used to generate an updated `poetry.lock` file.
+3. After making changes in the code, execute `poetry install` to install the package in a virtual environment.
+4. Perform tests to validate implemented features.
+
+### Testing
+
+1. Build the Python package: `poetry build`.
+2. Build and install the Arch Linux package (if applicable): `makepkg -sri`.
 
 ## License
 
