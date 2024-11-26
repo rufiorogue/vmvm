@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "vmvm"
-version = "0.1.0"
+version = "1.0.0"
 description = "QEMU wrapper and shell"
-authors = ["Roovio"]
+authors = ["rufiorogue"]
 readme = "README.md"
 
 classifiers = [
@@ -24,7 +24,7 @@ black = { version = "^22.3.0" }
 pytest = { version = "^7.2.0" }
 
 [tool.poetry.scripts]
-vmvm = 'vmvm.vmvm:main'
+vmvm = 'vmvm.main:main'
 
 [tool.isort]
 multi_line_output = 3

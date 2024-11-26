@@ -39,13 +39,14 @@ First you need to create a YAML configuration file named `vmconfig.yml`, presuma
 Here is an example of a configuration file:
 
 ```yaml
-preset: w10
+prototype: w10
 name: windows10
 cpus: 4
 ram: 8G
 disk: system.qcow2
 os_install:
     - Win10_21H2_English_x64.iso
+    - virtio-win-0.1.240.iso
 ```
 
 Then invoke `vmvm` as follows:
@@ -66,25 +67,25 @@ Note that all non-absolute paths in the config are relative to `vmconfig.yml` lo
 `install` and `run` both run the VM however the difference is how the boot device is selected.
 
 `install`:
-- first boot - from CD, on reboot - from first HDD
+- first boot from CD, after reboot - from first HDD
 - exists merely for convenience. Typically you use it only once, to install the OS
 
 `run`:
 - always boot from first HDD
-- `os_install` is ignored and thus no CD images are mounted
-- if you need your ISO images after installation you have to use `install` action instead of `run` every time
+- if `need_cd` = `False` (default) then `os_install` is ignored and thus no CD images are mounted
+- if `need_cd` = `True` then `os_install` images are mounted
 
 ## Configuration Options
 
 ### `name`
 (Required) Name of your virtual machine
 
-### `preset`
-(Optional) One parameter to configure many options at once, to optimize for particular guest OS.
+### `prototype`
+(Optional) Select a virtual hardware set tuned for particular guest OS.
 
-If not specified, `default` preset is used.
+Values: `default`, `linux`, `w10`, `w11`, `wxp`, `w2k`, `w98`.
 
-See [presets.yml](vmvm/presets.yml)
+If not specified, `default` for current arch is used.
 
 ### `cpus`
 (Optional) Number of CPUs for your virtual machine
@@ -109,8 +110,11 @@ Values: `i386`, `x86_64`, `aarch64`
 ### `bootmenu`
 (Optional) enable boot menu
 
+### `floppy`
+(Optional) floppy image file
+
 ### `disk` (alias `disks`)
-(Required) Disk image file. Can also be /dev/... file to pass through a host block device. (Optional) `disks` is an alias for `disk`. Both can be a single string or list of strings
+(Required) Disk image file. Can also be /dev/... file to pass through a host block device. (Optional) `disks` is an alias for `disk`. Both can be a single path spec or list of path specs.
 
 ### `disk_virtio`
 (Optional) for disk emulation, specify `blk` to use `virtio-blk`, `scsi` to use `virtio-scsi` or `none` to disable virtio and emulate IDE controller instead.
@@ -119,7 +123,10 @@ Applicable only to image file based disks. `blk` theoretically yields best perfo
 **Performance tip:** `disk_virtio` = `blk` will create one controller for each disk on PCIe bus, so do not use `blk` if more than a few disks. Use `scsi` in such case.
 
 ### `os_install`
-(Optional) will mount these images if action is `install`. Can be a single string or list of strings
+(Optional) mount these images if action is `install`. Can be a single path spec or list of path specs
+
+### `need_cd`
+(Optional) always have ISO images mounted, even if action is not `install`.
 
 ### `usb`
 (Optional) USB Passthrough. Can be a single device spec or list of specs. Device spec is `vendor:product`.
@@ -144,7 +151,11 @@ mount -t 9p -o trans=virtio,version=9p2000.L hostshare /mnt/share
 Example: `share_dir_as_fsd: /home/user/shared`.  Path can be relative to current directory.
 
 ### `share_dir_as_fat`
-(Optional) Map a host directory as a [virtual FAT filesystem](https://www.qemu.org/docs/master/system/images.html#virtual-fat-disk-images)  on guest.
+(Optional) Emulate a FAT disk with contents from a directory tree. See [documentation](https://www.qemu.org/docs/master/system/images.html#virtual-fat-disk-images).
+Do not use non-ASCII filenames or attempt to write to the FAT directory on the host system while accessing it with the guest system.
+
+### `share_dir_as_floppy`
+(Optional) Emulate a floppy with contents from a directory tree. See [documentation](https://www.qemu.org/docs/master/system/images.html#virtual-fat-disk-images).
 Do not use non-ASCII filenames or attempt to write to the FAT directory on the host system while accessing it with the guest system.
 
 ### `nic`
@@ -166,21 +177,50 @@ then on the host you can do:
 ssh localhost -p 2222
 ```
 
-### `vga`
-(Optional) VGA type (see qemu-system-<ARCH> -vga help)
+### `gpu`
+(Optional) GPU model (see `qemu-system-<ARCH> -device help` and "Display devices" section).
+
+### `display`
+(Optional) display type (see `qemu-system-<ARCH> -display help`).
+
+Has values such as `gtk`, `sdl` and `none`.
 
 ### `sound`
 (Optional) Soundcard type.
 
-Values: `hda`, `ac97`, `sb16`, `none`
+Values: `hda`, `ac97`, `sb16`, `none`.
 
-### `spice_port`
-(Optional) port for the SPICE server. If not provided or set to `auto`, will find the next available port starting from 5900.
+### `spice`
+(Optional) SPICE server config.
+- `unix`: use Unix socket. The path to the socket then will be `/run/user/<UID>/qemu/<machine name>/spice.sock`.
+- `auto`: use TCP connection, find the next available port number starting from 5900.
+- `(port)`: use TCP connection, specify the port number explicitly.
 
 ### `control_socket`
-(Optional) create QMP control socket named `qmp.sock` in VM current directory. You can use it to control the VM with
+(Optional) enable QMP control socket `/run/user/<UID>/qemu/<machine name>/qmp.sock`. Allows to control the VM with
 [`qmp-shell`](https://qemu.readthedocs.io/projects/python-qemu-qmp/en/latest/man/qmp_shell.html) or `qmp-tui` commands
 from [`python-qemu-qmp`](https://pypi.org/project/qemu.qmp/) package.
+
+## Ejecting / changing CD images
+
+You can eject or change image for by using QEMU monitor:
+
+```
+(qemu) change <device> <path to image>
+```
+
+If you run as `install` action and have `os_install` option set then you can use QEMU monitor command above to change the ISO image.
+The CD-ROM devices have names like `cddev0`, `cddev1`, etc. Sometimes QEMU monitor does not see these `cddevX` devices due to the bug,
+if so happens use `qmp-shell`.
+
+If you don't run as `install` then (since `os_install` is ignored) you are left with any default CD-ROM device present in the machine.
+Machine `PC` doesn't allow (or so it seems) to add a ide-cd device without the respective img file node backend, so you are out of luck.
+Machine `Q35` has a default device `ide2-cd0` that is always present even if no image specified on the command line.
+To view available block devices type in QEMU monitor:
+
+```
+(qemu) info block
+```
 
 
 ## Handy SMB server

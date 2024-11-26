@@ -1,0 +1,143 @@
+import logging, yaml, os, socket, argparse
+from logging import info,error
+
+from .config_parser import parse_config
+from .builder import CmdBuilder, RuntimeOptions
+from .exec import exec_with_trace
+from .utils import disk_image_format_by_name
+from .tpm_manager import TPMManager
+
+SPICE_PORT_BASE=5900
+
+
+def is_port_free(port: int) -> bool:
+    s = socket.socket()
+    try:
+        s.bind(('localhost',port))
+        return True
+    except:
+        pass
+    return False
+
+def find_next_free_port(port: int) -> int:
+    while not is_port_free(port):
+        port += 1
+    return port
+
+
+class App:
+
+
+    def __init__(self, conf_dir: str):
+        self.tpm_manager = None
+        os.chdir(conf_dir)
+        conf = yaml.safe_load(open('vmconfig.yml', 'r'))
+        self._options = parse_config(conf)
+        logging.debug('**** options: ****')
+        logging.debug(repr(self._options))
+        logging.debug('******************')
+
+    def _start_tpm(self):
+        if self._options.enable_tpm:
+            info('starting software TPM daemon')
+            self.tpm_manager = TPMManager(self._options.name)
+            self.tpm_manager.run()
+
+    def _shutdown_tpm(self):
+        if self._options.enable_tpm:
+            info('shutting down software TPM daemon')
+            self.tpm_manager.shutdown()
+
+
+    def act_init(self):
+        info('action: initializing vm')
+
+        if len(self._options.disks):
+            first_disk = self._options.disks[0]
+            if os.path.exists(first_disk):
+                error('disk already exists, not overwriting: %s', first_disk)
+                return
+            else:
+                img_format = disk_image_format_by_name(first_disk)
+                info('creating empty disk %s with size %s and format %s', first_disk, '100G', img_format.upper())
+                exec_with_trace('qemu-img', ['create', '-f', img_format, first_disk, '100G'])
+        else:
+            error('no disks configured?')
+
+    def act_install(self):
+        self._start_tpm()
+        info('action: installing operating system inside vm')
+        runtime_options = RuntimeOptions(spice_port=find_next_free_port(SPICE_PORT_BASE),tpm_socket=self.tpm_manager.sock if self.tpm_manager else None)
+        args = CmdBuilder.common_args(self._options,runtime_options) + CmdBuilder.boot_args(self._options,mode='install') + CmdBuilder.cdrom_args(self._options,mount=True)
+        exec_with_trace(f'qemu-system-{self._options.qemu_binary}', args)
+        self._shutdown_tpm()
+
+
+    def act_run(self):
+        self._start_tpm()
+        info('action: running vm')
+        runtime_options = RuntimeOptions(spice_port=find_next_free_port(SPICE_PORT_BASE),tpm_socket=self.tpm_manager.sock if self.tpm_manager else None)
+        args = CmdBuilder.common_args(self._options,runtime_options) + CmdBuilder.boot_args(self._options,mode='run') + CmdBuilder.cdrom_args(self._options,mount=False)
+        exec_with_trace(f'qemu-system-{self._options.qemu_binary}', args)
+        self._shutdown_tpm()
+
+USAGE= '''
+
+    vmvm <ACTION> [CONF_DIR]
+
+ACTION = init | install | run
+
+    init          create an image file for the first HDD in the config (if not exist)
+    install       boot from 'os_install' device to install operating system
+    run           boot from first HDD
+
+CONF_DIR
+    is a directory containing vmconfig.yml. Default is CWD.
+
+Example:
+    vmvm install
+
+Configuration Options:
+    name                Name of the virtual machine (str, required)
+    prototype           Specify a hint to the installed operating system personality (linux, w10, w11, wxp, w2k, w98)
+    cpus                Number of CPUs (uint)
+    ram                 Amount of RAM (with suffix such as M or G)
+    arch                Architecture (i386, x86_64, aarch64)
+    efi                 Enable EFI (True/False)
+    secureboot          Enable EFI SecureBoot (True/False)
+    tpm                 Enable software TPM emulation (True/False)
+    bootmenu            Enable boot menu (True/False)
+    floppy              Floppy image file (path)
+    disk (disks)        Disk image file or list (path or list of paths, required)
+    disk_virtio         Disk emulation (blk, scsi, none)
+    os_install          mount ISO images if ACTION=='install' (path or list of paths)
+    need_cd             always mount ISO images, even if ACTION is not 'install' (True/False)
+    usb                 USB Passthrough (pair or list of pairs like vendor:product)
+    share_dir_as_fsd    Share a host directory with virtiofsd (path)
+    share_dir_as_fat    Map a host directory as a virtual FAT filesystem (path)
+    share_dir_as_floppy Map a host directory as a virtual floppy (path)
+    nic                 Network interface card (none, virtio, or <specific model>)
+    nic_forward_ports   Forward local port to guest port (scalar or list of dicts like "host: 2222, guest: 22")
+    gpu                 GPU model (see qemu-system-<ARCH> -device help and "Display devices" section)
+    display             Display type (see qemu-system-<ARCH> -display help)
+    sound               Sound card type (hda, ac97, sb16, none)
+    spice               SPICE server config (unix, auto, <port number>, none)
+    control_socket      Enable QMP control socket (True/False)
+
+'''
+
+
+def main():
+    logging.basicConfig(format='%(asctime)s  %(levelname)s  %(message)s', level=logging.DEBUG)
+
+    parser = argparse.ArgumentParser(prog='vmvm', description='User friendly QEMU frontend', usage=USAGE)
+    parser.add_argument('cmd', choices=['init','install','run'])
+    parser.add_argument('dir_name', nargs='?', default=os.getcwd())
+    args = parser.parse_args()
+
+    app = App(args.dir_name)
+    getattr(app,'act_'+args.cmd)()
+
+
+if __name__ == '__main__':
+    main()
