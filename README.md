@@ -83,7 +83,7 @@ Note that all non-absolute paths in the config are relative to `vmconfig.yml` lo
 ### `prototype`
 (Optional) Select a virtual hardware set tuned for particular guest OS.
 
-Values: `default`, `linux`, `w10`, `w11`, `wxp`, `w2k`, `w98`.
+Values: `default` (x86_64/aarch64), `linux` (x86_64/aarch64), `linux-x86_64-3daccel` (Virgl support), `w10`, `w11`, `wxp`, `w2k`, `w98`.
 
 If not specified, `default` for current arch is used.
 
