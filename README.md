@@ -1,6 +1,8 @@
 # VMVM - a user friendly QEMU frontend
 
-Running QEMU is hard for mere mortals. It has a lot of options and even simplest tasks require passing a lot of them to fully define the virtual environment. With this app a lot of complexity can be hidden away under a simple facade of a small config file.
+Running QEMU is hard for mere mortals. It has a lot of options and even simplest tasks require passing
+a lot of them to fully define the virtual environment. With this app a lot of complexity can be hidden
+away under a simple facade of a small config file.
 
 ## Features
 
@@ -13,12 +15,10 @@ Running QEMU is hard for mere mortals. It has a lot of options and even simplest
 ## Dependencies
 
 - QEMU
-- Python 3
-- python-yaml
+- Python 3.10+
+- pyyaml
 
 ## Installation
-
-This project has been wrapped into a Python package using `poetry` and includes a PKGBUILD file for AUR compatibility.
 
 ### For Python Package
 Run `poetry build -v -n` to build the Python package.
@@ -26,15 +26,10 @@ Run `poetry build -v -n` to build the Python package.
 ### For Arch Linux Package
 Run `makepkg -sri` to build and install the Arch Linux package.
 
-### Alternative Installation Method
-Install the Python package directly from the repository using pip:
-```bash
-pip install git+https://github.com/roovio/vmvm
-```
-
 ## Usage
 
-First you need to create a YAML configuration file named `vmconfig.yml`, presumably in a dedicated directory for the VM but this is not required.
+First you need to create a YAML configuration file named `vmconfig.yml`,
+presumably in a dedicated directory for the VM but this is not required.
 
 Here is an example of a configuration file:
 
@@ -83,7 +78,7 @@ Note that all non-absolute paths in the config are relative to `vmconfig.yml` lo
 ### `prototype`
 (Optional) Select a virtual hardware set tuned for particular guest OS.
 
-Values: `default` (x86_64/aarch64), `linux` (x86_64/aarch64), `linux-x86_64-3daccel` (Virgl support), `w10`, `w11`, `wxp`, `w2k`, `w98`.
+Values: `default` (x86_64/aarch64), `linux` (x86_64/aarch64), `linux-x86_64-3daccel` (Virgl support),`w10`, `w11`, `wxp`, `w2k`, `w98`.
 
 If not specified, `default` for current arch is used.
 
@@ -105,7 +100,8 @@ Values: `i386`, `x86_64`, `aarch64`
 (Optional) enable EFI SecureBoot (`OVMF_CODE.secboot.fd`). Has no effect unless `efi` is set to True
 
 ### `tpm`
-(Optional) software emulation of Trusted Platform Module 2.0. Requires [swtpm](https://www.qemu.org/docs/master/specs/tpm.html#the-qemu-tpm-emulator-device) to be installed
+(Optional) software emulation of Trusted Platform Module 2.0.
+Requires [swtpm](https://www.qemu.org/docs/master/specs/tpm.html#the-qemu-tpm-emulator-device) to be installed
 
 ### `bootmenu`
 (Optional) enable boot menu
@@ -114,13 +110,16 @@ Values: `i386`, `x86_64`, `aarch64`
 (Optional) floppy image file
 
 ### `disk` (alias `disks`)
-(Required) Disk image file. Can also be /dev/... file to pass through a host block device. (Optional) `disks` is an alias for `disk`. Both can be a single path spec or list of path specs.
+(Required) Disk image file. Can also be /dev/... file to pass through a host block device.
+(Optional) `disks` is an alias for `disk`. Both can be a single path spec or list of path specs.
 
 ### `disk_virtio`
-(Optional) for disk emulation, specify `blk` to use `virtio-blk`, `scsi` to use `virtio-scsi` or `none` to disable virtio and emulate IDE controller instead.
-Applicable only to image file based disks. `blk` theoretically yields best performance. `scsi` is best for large disk arrays. `none` for legacy OSes.
+(Optional) for disk emulation, specify `blk` to use `virtio-blk`, `scsi` to use `virtio-scsi`
+or `none` to disable virtio and emulate IDE controller instead. Applicable only to image file based disks.
+`blk` theoretically yields best performance. `scsi` is best for large disk arrays. `none` for legacy OSes.
 
-**Performance tip:** `disk_virtio` = `blk` will create one controller for each disk on PCIe bus, so do not use `blk` if more than a few disks. Use `scsi` in such case.
+**Performance tip:** `disk_virtio` = `blk` will create one controller for each disk on PCIe bus,
+so do not use `blk` if more than a few disks. Use `scsi` in such case.
 
 ### `os_install`
 (Optional) mount these images if action is `install`. Can be a single path spec or list of path specs
@@ -140,8 +139,8 @@ SUBSYSTEM=="usb", ATTR{idVendor}=="xxxx", ATTR{idProduct}=="xxxx", MODE="0666"
 ```
 
 ### `share_dir_as_fsd`
-(Optional) Share a host directory with [virtiofsd](https://virtio-fs.gitlab.io/index.html). Use with Linux guests. This method provides best performance
-as well as other useful virtualisation features.
+(Optional) Share a host directory with [virtiofsd](https://virtio-fs.gitlab.io/index.html).
+Use with Linux guests. This method provides best performance as well as other useful virtualisation features.
 
 You can mount the directory on the guest as follows:
 ```
@@ -151,11 +150,13 @@ mount -t 9p -o trans=virtio,version=9p2000.L hostshare /mnt/share
 Example: `share_dir_as_fsd: /home/user/shared`.  Path can be relative to current directory.
 
 ### `share_dir_as_fat`
-(Optional) Emulate a FAT disk with contents from a directory tree. See [documentation](https://www.qemu.org/docs/master/system/images.html#virtual-fat-disk-images).
-Do not use non-ASCII filenames or attempt to write to the FAT directory on the host system while accessing it with the guest system.
+(Optional) Emulate a FAT disk with contents from a directory tree.
+See [documentation](https://www.qemu.org/docs/master/system/images.html#virtual-fat-disk-images).
+Do not use non-ASCII filenames or attempt to write to the FAT directory on the host systemwhile accessing it with the guest system.
 
 ### `share_dir_as_floppy`
-(Optional) Emulate a floppy with contents from a directory tree. See [documentation](https://www.qemu.org/docs/master/system/images.html#virtual-fat-disk-images).
+(Optional) Emulate a floppy with contents from a directory tree.
+See [documentation](https://www.qemu.org/docs/master/system/images.html#virtual-fat-disk-images).
 Do not use non-ASCII filenames or attempt to write to the FAT directory on the host system while accessing it with the guest system.
 
 ### `nic`
@@ -183,18 +184,19 @@ ssh localhost -p 2222
 ### `display`
 (Optional) display type (see `qemu-system-<ARCH> -display help`).
 
-Has values such as `gtk`, `sdl` and `none`.
+Typical values: `gtk`, `sdl`, `none`.
 
 ### `sound`
 (Optional) Soundcard type.
 
-Values: `hda`, `ac97`, `sb16`, `none`.
+Typical values: `hda`, `ac97`, `sb16`, `none`.
 
 ### `spice`
 (Optional) SPICE server config.
 - `unix`: use Unix socket. The path to the socket then will be `/run/user/<UID>/qemu/<machine name>/spice.sock`.
 - `auto`: use TCP connection, find the next available port number starting from 5900.
 - `(port)`: use TCP connection, specify the port number explicitly.
+- `none`: disables SPICE entirely. Required if using a 3D-accelerated GPU such as `virtio-vga-gl`.
 
 ### `control_socket`
 (Optional) enable QMP control socket `/run/user/<UID>/qemu/<machine name>/qmp.sock`. Allows to control the VM with
@@ -221,18 +223,14 @@ To view available block devices type in QEMU monitor:
 ```
 (qemu) info block
 ```
-
-
 ## Handy SMB server
 
 As an alternative to `share_...` config options,  a docker compose is provided in subdirectory `smb` to spin up a SMB server,
 to be accessed from guest. Refer to the respective [README](smb/README.md).
 
-## Contributing
+## Development
 
-If you would like to contribute to this project, please feel free to submit a pull request or open an issue on GitHub.
-
-### Setting Up the Development Environment
+### Setting up the environment
 
 1. Install the project dependencies using Poetry: `poetry install --no-root`.
 2. If some changes are done in `pyproject.toml`, then `poetry lock` should be used to generate an updated `poetry.lock` file.
@@ -241,9 +239,7 @@ If you would like to contribute to this project, please feel free to submit a pu
 
 ### Testing
 
-1. Build the Python package: `poetry build`.
-2. Build and install the Arch Linux package (if applicable): `makepkg -sri`.
+Within the root directory:
 
-## License
-
-This project is open source and available under the [GPLv3 License](LICENSE).
+1. Run the main program: `poetry run vmvm ...`.
+2. Run tests: `pytest`
