@@ -19,40 +19,11 @@ python = "^3.10"
 pyyaml = "^6.0.1"
 
 [tool.poetry.dev-dependencies]
-isort = { version = "^5.3.0" }
-black = { version = "^22.3.0" }
 pytest = { version = "^7.2.0" }
 
 [tool.poetry.scripts]
 vmvm = 'vmvm.main:main'
 
-[tool.isort]
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-line_length = 120
-
-[tool.black]
-line-length = 120
-target-version = ["py38"]
-include = '\.pyi?$'
-exclude = '''
-(
-  /(
-      \.eggs
-    | \.git
-    | \.hg
-    | \.mypy_cache
-    | \.tox
-    | \.venv
-    | _build
-    | buck-out
-    | build
-    | dist
-  )/
-)
-'''
 
 [build-system]
 requires = ["poetry-core"]
