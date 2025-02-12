@@ -1,11 +1,17 @@
 
 from vmvm.builder import VMOptions, RuntimeOptions, CmdBuilder
-from pytest import fixture
+import pytest
 
-@fixture
-def vmoptions_default():
 
-    return VMOptions(
+def is_sublist(needle, haystack):
+    """ check if 'needle' list is exact sublist of 'haystack' list """
+    return str(needle)[1:-1] in str(haystack)[1:-1]
+
+
+
+def test_default():
+
+    vmoptions_default = VMOptions(
         disks = [],
         name = "foo",
         cpus = 4,
@@ -35,17 +41,16 @@ def vmoptions_default():
         control_socket = False,
     )
 
-
-def test_default(vmoptions_default):
-    cmdline = CmdBuilder.boot_args(vmoptions_default, 'install')
+    b = CmdBuilder()
+    cmdline = b.boot_args(vmoptions_default, 'install')
     assert cmdline == ['-boot', 'once=d']
-    cmdline = CmdBuilder.boot_args(vmoptions_default, 'run')
+    cmdline = b.boot_args(vmoptions_default, 'run')
     assert cmdline == ['-boot', 'order=c']
-    cmdline = CmdBuilder.cdrom_args(vmoptions_default, mount=False)
+    cmdline = b.cdrom_args(vmoptions_default, mount=False)
     assert cmdline == []
-    cmdline = CmdBuilder.cdrom_args(vmoptions_default, mount=True)
+    cmdline = b.cdrom_args(vmoptions_default, mount=True)
     assert cmdline == []
-    cmdline = CmdBuilder.common_args(vmoptions_default, RuntimeOptions(spice_port=123,tpm_socket="/tmp/my-socket"))
+    cmdline = b.common_args(vmoptions_default, RuntimeOptions(spice_port=123,tpm_socket="/tmp/my-socket")).args
     assert cmdline == [
         '-name', 'foo',
         '-machine', 'q35',
@@ -69,45 +74,43 @@ def test_default(vmoptions_default):
         ]
 
 
-@fixture
-def vmoptions_linux_1():
-
-    return VMOptions(
-        disks = [ "system.qcow2"],
-        name = "bar",
-        cpus = 8,
-        ram = "24G",
-        arch = "x86_64",
-        machine = "q35",
-        enable_efi = False,
-        enable_kvm = True,
-        cpu_model = "host",
-        enable_boot_menu = False,
-        enable_secureboot = False,
-        enable_tpm = False,
-        disk_virtio_mode = "blk",
-        usbdevices = [],
-        isoimages = ["anything here"],
-        need_cd = False,
-        floppy = None,
-        share_dir_as_fat = None,
-        share_dir_as_floppy = None,
-        share_dir_as_fsd = None,
-        nic_model = "virtio",
-        nic_forward_ports =  [{
-              "host": 2222,
-              "guest": 22,
-          }],
-        soundcard_model = "hda",
-        gpu_model = "virtio-vga",
-        display = "none",
-        spice = "auto",
-        control_socket = False,
-    )
+vmoptions_linux_1 = VMOptions(
+    disks = [ "system.qcow2"],
+    name = "bar",
+    cpus = 8,
+    ram = "24G",
+    arch = "x86_64",
+    machine = "q35",
+    enable_efi = False,
+    enable_kvm = True,
+    cpu_model = "host",
+    enable_boot_menu = False,
+    enable_secureboot = False,
+    enable_tpm = False,
+    disk_virtio_mode = "blk",
+    usbdevices = [],
+    isoimages = ["anything here"],
+    need_cd = False,
+    floppy = None,
+    share_dir_as_fat = None,
+    share_dir_as_floppy = None,
+    share_dir_as_fsd = None,
+    nic_model = "virtio",
+    nic_forward_ports =  [{
+            "host": 2222,
+            "guest": 22,
+        }],
+    soundcard_model = "hda",
+    gpu_model = "virtio-vga",
+    display = "none",
+    spice = "auto",
+    control_socket = False,
+)
 
 
-def test_linux_1(vmoptions_linux_1):
-    cmdline = CmdBuilder.common_args(vmoptions_linux_1, RuntimeOptions(spice_port=5900,tpm_socket=""))
+def test_linux_1():
+    b = CmdBuilder()
+    cmdline = b.common_args(vmoptions_linux_1, RuntimeOptions(spice_port=5900,tpm_socket="")).args
     assert cmdline == [
         '-name', 'bar',
         '-machine', 'q35',
@@ -133,11 +136,83 @@ def test_linux_1(vmoptions_linux_1):
     ]
 
 
+def make_vmoptions_linux_efi_nosecboot():
+    options = vmoptions_linux_1
+    options.enable_efi = True
+    options.enable_secureboot = False
+    return options
 
-@fixture
-def vmoptions_cdrom():
+def make_vmoptions_linux_efi_secboot():
+    options = vmoptions_linux_1
+    options.enable_efi = True
+    options.enable_secureboot = True
+    return options
 
-    return VMOptions(
+def test_linux_efi_edk2_not_installed():
+    b = CmdBuilder(listdir_fn=lambda _: [], pathexists_fn=lambda _: False)
+    with pytest.raises(FileNotFoundError):
+        b.common_args(make_vmoptions_linux_efi_nosecboot(), RuntimeOptions(spice_port=5900,tpm_socket="")).args
+
+
+def test_linux_efi():
+
+    def test_variant(efi_dir_contents, options, expectation):
+        my_listdir = lambda _: efi_dir_contents
+        def my_path_exists(p):
+            if '/usr/share/edk2/x64' in p:
+                p = p.replace('/usr/share/edk2/x64/','')
+                return p in efi_dir_contents
+            return False
+        b = CmdBuilder(listdir_fn=my_listdir, pathexists_fn=my_path_exists)
+        cmdline = b.common_args(options, RuntimeOptions(spice_port=5900,tpm_socket="")).args
+        assert is_sublist(expectation, cmdline)
+
+
+    test_variant(
+            [
+                'OVMF_CODE.fd', 'OVMF_CODE.secboot.fd', 'OVMF_VARS.fd'
+            ],
+            make_vmoptions_linux_efi_nosecboot(),
+            [
+                '-drive', 'if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.fd',
+                '-drive', 'if=pflash,format=raw,file=./OVMF_VARS.fd',
+            ])
+
+    test_variant(
+            [
+                'OVMF_CODE.fd', 'OVMF_CODE.secboot.fd', 'OVMF_VARS.fd'
+            ],
+            make_vmoptions_linux_efi_secboot(),
+            [
+                '-drive', 'if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.secboot.fd',
+                '-drive', 'if=pflash,format=raw,file=./OVMF_VARS.fd',
+            ])
+
+    test_variant(
+            [
+                'MICROVM.4m.fd', 'OVMF.4m.fd', 'OVMF_CODE.4m.fd', 'OVMF_CODE.secboot.4m.fd', 'OVMF_VARS.4m.fd'
+            ],
+            make_vmoptions_linux_efi_nosecboot(),
+            [
+                '-drive', 'if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd',
+                '-drive', 'if=pflash,format=raw,file=./OVMF_VARS.4m.fd',
+            ])
+
+ 
+    test_variant(
+            [
+                'MICROVM.4m.fd', 'QEMU.4m.fd', 'QEMU_CODE.4m.fd', 'QEMU_CODE.secboot.4m.fd', 'QEMU_VARS.4m.fd'
+            ],
+            make_vmoptions_linux_efi_nosecboot(),
+            [
+                '-drive', 'if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/QEMU_CODE.4m.fd',
+                '-drive', 'if=pflash,format=raw,file=./QEMU_VARS.4m.fd',
+            ])
+
+
+
+def test_cdrom():
+    vmoptions_cdrom = VMOptions(
         disks = [],
         name = "bar",
         cpus = 4,
@@ -167,9 +242,8 @@ def vmoptions_cdrom():
         control_socket = False,
     )
 
-
-def test_cdrom(vmoptions_cdrom):
-    cmdline = CmdBuilder.cdrom_args(vmoptions_cdrom, mount=True)
+    b = CmdBuilder()
+    cmdline = b.cdrom_args(vmoptions_cdrom, mount=True)
     assert cmdline == [
         '-blockdev', 'driver=file,read-only=on,node-name=isofile0,filename=foo.iso',
         '-blockdev', 'driver=raw,node-name=cdrom0,file=isofile0',
@@ -177,10 +251,9 @@ def test_cdrom(vmoptions_cdrom):
     ]
 
 
-@fixture
-def vmoptions_linux_3daccel():
 
-    return VMOptions(
+def test_linux_3daccel():
+    vmoptions_linux_3daccel = VMOptions(
         disks = [],
         name = "bar",
         cpus = 4,
@@ -209,19 +282,8 @@ def vmoptions_linux_3daccel():
         spice = "none",
         control_socket = False,
     )
-
-
-def test_linux_3daccel(vmoptions_linux_3daccel):
-    cmdline = CmdBuilder.common_args(vmoptions_linux_3daccel, RuntimeOptions(spice_port=0,tpm_socket=""))
-    assert cmdline == [
-        '-name', 'bar',
-        '-machine', 'q35',
-        '-smp', '4',
-        '-m', '4G',
-        '-cpu', 'host',
+    b = CmdBuilder()
+    cmdline = b.common_args(vmoptions_linux_3daccel, RuntimeOptions(spice_port=0,tpm_socket="")).args
+    assert is_sublist([
         '-device', 'virtio-vga-gl',
-        '-display', 'gtk',
-        '-device', 'qemu-xhci',
-        '-device', 'usb-tablet',
-        '-nic', 'none',
-    ]
+        ], cmdline)

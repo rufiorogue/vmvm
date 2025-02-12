@@ -182,9 +182,15 @@ ssh localhost -p 2222
 (Optional) GPU model (see `qemu-system-<ARCH> -device help` and "Display devices" section).
 
 ### `display`
-(Optional) display type (see `qemu-system-<ARCH> -display help`).
+(Optional) QEMU UI to use (see `qemu-system-<ARCH> -display help`).
 
 Typical values: `gtk`, `sdl`, `none`.
+
+`none` disables UI entirely so you have to rely on other methods to obtain graphical output of the VM.
+such as SPICE (TODO: or external monitor, if PCI passthrough is configured).
+Note that GPU hardware in the VM is not affected by this setting, i.e. if `display` is set to `none`
+the GPU is operating, but you cannot easily see the graphics because there is no window.
+
 
 ### `sound`
 (Optional) Soundcard type.

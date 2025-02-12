@@ -1,8 +1,8 @@
 import os
+import os.path
 from pathlib import Path
 import logging
 import json
-from .exec import exec_with_trace
 from .utils import disk_image_format_by_name
 
 from dataclasses import dataclass
@@ -62,11 +62,22 @@ class RuntimeOptions:
     spice_port: int
     tpm_socket: str
 
+@dataclass
+class ExecCommand:
+    exe: str
+    args: list[str]
+
+@dataclass
+class CommonArgsBuildResult:
+    args: list[str]
+    pre_commands: list[ExecCommand]
+
 class CmdBuilder:
+    def __init__(self, listdir_fn=os.listdir, pathexists_fn=os.path.exists):
+        self._listdir = listdir_fn
+        self._path_exists = pathexists_fn
 
-
-    def common_args(o: VMOptions, uo: RuntimeOptions):
-
+    def common_args(self, o: VMOptions, uo: RuntimeOptions) -> CommonArgsBuildResult:
 
         def get_unix_sock_path(sock_name: str) -> str:
             dir = f'/run/user/{os.getuid()}/qemu/{o.name}/'
@@ -74,7 +85,6 @@ class CmdBuilder:
             return dir + f'{sock_name}.sock'
 
 
-        # Common Args
         args = [
             '-name', o.name,
             '-machine', o.machine,
@@ -85,6 +95,8 @@ class CmdBuilder:
             #'-balloon', 'virtio',
             #'-localtime',
         ]
+
+        pre_commands: list[ExecCommand] = []
 
         if o.enable_kvm:
             args += [ '-enable-kvm' ]
@@ -128,27 +140,36 @@ class CmdBuilder:
 
         # EFI
         if o.enable_efi:
-            edk2_path = f'/usr/share/edk2/{o.edk2_subdir}/'
+            edk2_dir = f'/usr/share/edk2/{o.edk2_subdir}'
 
-            if os.path.exists(f'{edk2_path}OVMF_CODE.fd') and os.path.exists(f'{edk2_path}OVMF_VARS.fd'):
-                efi_prefix = 'OVMF'
-            elif os.path.exists(f'{edk2_path}QEMU_CODE.fd') and os.path.exists(f'{edk2_path}QEMU_VARS.fd'):
-                efi_prefix = 'QEMU'
-            else:
-                efi_prefix = None
+            # logic to locate edk2 files
+            edk2_dir_files = self._listdir(edk2_dir)
+            code_fd = None
+            vars_fd_src = None
+            for filename in edk2_dir_files:
+                if code_fd is None:
+                    if 'CODE' in filename:
+                        if o.enable_secureboot:
+                            if 'secboot' in filename:
+                                code_fd = edk2_dir + '/' + filename
+                        else:
+                            if 'secboot' not in filename:
+                                code_fd = edk2_dir + '/' + filename
+                if vars_fd_src is None:
+                    if 'VARS' in filename:
+                        vars_fd_src = edk2_dir + '/' + filename
 
+            vars_fd_local =  f'./{os.path.basename(vars_fd_src)}' if vars_fd_src else None
 
-            if efi_prefix is not None:
+            if self._path_exists(code_fd) and self._path_exists(vars_fd_src):
 
-                if not os.path.exists(f'./{efi_prefix}_VARS.fd'):
-                    logging.info(f'{efi_prefix}_VARS.fd file does not exist in VM directory, copying from system')
-                    exec_with_trace('cp', [f'{edk2_path}{efi_prefix}_VARS.fd', '.'])
-
-                efi_fd_variant = 'secboot.fd' if o.enable_secureboot else 'fd'
+                if not self._path_exists(vars_fd_local):
+                    logging.info(f'{vars_fd_local} file does not exist in VM directory, copying from system')
+                    pre_commands.append(ExecCommand(exe='cp',args=[vars_fd_src, '.']))
 
                 args += [
-                    '-drive', f'if=pflash,format=raw,readonly=on,file={edk2_path}{efi_prefix}_CODE.{efi_fd_variant}',
-                    '-drive', f'if=pflash,format=raw,file={efi_prefix}_VARS.fd',
+                    '-drive', f'if=pflash,format=raw,readonly=on,file={code_fd}',
+                    '-drive', f'if=pflash,format=raw,file={vars_fd_local}',
                 ]
 
             else:
@@ -231,7 +252,7 @@ class CmdBuilder:
                 '-device', 'virtio-9p-pci,fsdev=fsdev0,mount_tag=hostshare',
             ]
 
-        # USB
+        # emulated USB devices
         if o.machine == 'pc':
             args += [
                 '-usb',                        # add a UHCI controller (USB 1.1). Bus name usb-bus.0
@@ -246,6 +267,7 @@ class CmdBuilder:
                 '-device', 'usb-tablet',
             ]
 
+        # passthrough USB devices
         for usb_dev in o.usbdevices:
             vendor_id,product_id = usb_dev.split(':')
             args += [ '-device', f'usb-host,vendorid=0x{vendor_id},productid=0x{product_id}' ]
@@ -280,9 +302,9 @@ class CmdBuilder:
         if o.display == 'none':
             logging.info(f"No GUI is configured, use SPICE{' or QMP socket' if o.control_socket else ''} to control")
 
-        return args
+        return CommonArgsBuildResult(args=args, pre_commands=pre_commands)
 
-    def boot_args(o: VMOptions, mode: str) -> list[str]:
+    def boot_args(self, o: VMOptions, mode: str) -> list[str]:
         args = []
         if o.enable_boot_menu:
             args = [ '-boot', 'menu=on', ]
@@ -294,7 +316,7 @@ class CmdBuilder:
                 args = [ '-boot', 'order=c', ]
         return args
 
-    def cdrom_args(o: VMOptions, mount: bool) -> list[str]:
+    def cdrom_args(self, o: VMOptions, mount: bool) -> list[str]:
         args = []
         def num_ide_slots() -> int:
             match o.machine:
@@ -321,4 +343,5 @@ class CmdBuilder:
             #TODO: can we change name of default Q35 IDE CD-ROM device (ide2-cd0)?
             args += [
             ]
+
         return args

@@ -2,7 +2,7 @@ import logging, yaml, os, socket, argparse
 from logging import info,error
 
 from .config_parser import parse_config
-from .builder import CmdBuilder, RuntimeOptions
+from .builder import CmdBuilder, RuntimeOptions, CommonArgsBuildResult
 from .exec import exec_with_trace
 from .utils import disk_image_format_by_name
 from .tpm_manager import TPMManager
@@ -68,7 +68,11 @@ class App:
         self._start_tpm()
         info('action: installing operating system inside vm')
         runtime_options = RuntimeOptions(spice_port=find_next_free_port(SPICE_PORT_BASE),tpm_socket=self.tpm_manager.sock if self.tpm_manager else None)
-        args = CmdBuilder.common_args(self._options,runtime_options) + CmdBuilder.boot_args(self._options,mode='install') + CmdBuilder.cdrom_args(self._options,mount=True)
+        cmd_builder = CmdBuilder()
+        common_args_build_result: CommonArgsBuildResult = cmd_builder.common_args(self._options,runtime_options)
+        for pre_command in common_args_build_result.pre_commands:
+            exec_with_trace(pre_command.exe, pre_command.args)
+        args = common_args_build_result.args + cmd_builder.boot_args(self._options,mode='install') + cmd_builder.cdrom_args(self._options,mount=True)
         exec_with_trace(f'qemu-system-{self._options.qemu_binary}', args)
         self._shutdown_tpm()
 
@@ -77,7 +81,11 @@ class App:
         self._start_tpm()
         info('action: running vm')
         runtime_options = RuntimeOptions(spice_port=find_next_free_port(SPICE_PORT_BASE),tpm_socket=self.tpm_manager.sock if self.tpm_manager else None)
-        args = CmdBuilder.common_args(self._options,runtime_options) + CmdBuilder.boot_args(self._options,mode='run') + CmdBuilder.cdrom_args(self._options,mount=False)
+        cmd_builder = CmdBuilder()
+        common_args_build_result: CommonArgsBuildResult = cmd_builder.common_args(self._options,runtime_options)
+        for pre_command in common_args_build_result.pre_commands:
+            exec_with_trace(pre_command.exe, pre_command.args)
+        args = common_args_build_result.args + cmd_builder.boot_args(self._options,mode='run') + cmd_builder.cdrom_args(self._options,mount=False)
         exec_with_trace(f'qemu-system-{self._options.qemu_binary}', args)
         self._shutdown_tpm()
 
@@ -119,7 +127,7 @@ Configuration Options:
     nic                 Network interface card (none, virtio, or <specific model>)
     nic_forward_ports   Forward local port to guest port (scalar or list of dicts like "host: 2222, guest: 22")
     gpu                 GPU model (see qemu-system-<ARCH> -device help and "Display devices" section)
-    display             Display type (see qemu-system-<ARCH> -display help)
+    display             QEMU UI backend (see qemu-system-<ARCH> -display help)
     sound               Sound card type (hda, ac97, sb16, none)
     spice               SPICE server config (unix, auto, <port number>, none)
     control_socket      Enable QMP control socket (True/False)

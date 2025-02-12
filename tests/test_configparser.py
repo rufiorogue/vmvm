@@ -38,3 +38,9 @@ def test_prototype_linux_3daccel():
     assert 'virtio-vga-gl' in o.gpu_model
     assert 'gl' in o.display
     assert 'none' in o.spice
+
+
+def test_efi():
+    o = parse_config(dict(name='foo',efi=True))
+
+    assert o.enable_efi == True
