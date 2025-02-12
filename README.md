@@ -113,6 +113,8 @@ Requires [swtpm](https://www.qemu.org/docs/master/specs/tpm.html#the-qemu-tpm-em
 (Required) Disk image file. Can also be /dev/... file to pass through a host block device.
 (Optional) `disks` is an alias for `disk`. Both can be a single path spec or list of path specs.
 
+Supports discard (trim) requests on the blockdev, Execute `fstrim -av` on the guest to relinquish the free space.
+
 ### `disk_virtio`
 (Optional) for disk emulation, specify `blk` to use `virtio-blk`, `scsi` to use `virtio-scsi`
 or `none` to disable virtio and emulate IDE controller instead. Applicable only to image file based disks.
@@ -137,6 +139,78 @@ QEMU user must be able to rw the device. One way to achieve this is to create a 
 ```udev
 SUBSYSTEM=="usb", ATTR{idVendor}=="xxxx", ATTR{idProduct}=="xxxx", MODE="0666"
 ```
+and then run
+```
+sudo udev trigger
+```
+
+### `pci`
+(Optional) PCIe Passthrough. Can be a single device spec or list of specs. Device spec is `<bus number>:<device number>` notation such as `09:00`.
+At the moment only GPU devices are supported. Multiple devices with same combination of vendor/product are unsupported.
+
+Some preparations must be in place before attempting PCIe passthrough:
+
+1. Ensure the PCIe device is exclusively controlled by vfio-pci module
+
+1.1. Find iommu group, bus/device address and vendor/product of the PCIe device:
+```
+#!/bin/bash
+shopt -s nullglob
+for g in $(find /sys/kernel/iommu_groups/* -maxdepth 0 -type d | sort -V); do
+    echo "IOMMU Group ${g##*/}:"
+    for d in $g/devices/*; do
+        echo -e "\t$(lspci -nns ${d##*/})"
+    done;
+done;
+```
+
+The output will be something like:
+```
+IOMMU Group 2:
+	00:03.0 Host bridge [0600]: Advanced Micro Devices, Inc. [AMD] Family 17h (Models 00h-1fh) PCIe Dummy Host Bridge [1022:1452]
+	00:03.1 PCI bridge [0604]: Advanced Micro Devices, Inc. [AMD] Family 17h (Models 00h-0fh) PCIe GPP Bridge [1022:1453]
+	09:00.0 VGA compatible controller [0300]: NVIDIA Corporation GK106GL [Quadro K4000] [10de:11fa] (rev a1)
+	09:00.1 Audio device [0403]: NVIDIA Corporation GK106 HDMI Audio Controller [10de:0e0b] (rev a1)
+```
+In this case we want to passthrough `09:00.0` and `09:00.1` devices with vendor/product `10de:11fa` and `10de:0e0b` respectively.
+
+1.2. Add to kernel parameters
+1.2.1. For AMD processors:
+```
+amd_iommu=pt
+```
+1.2.2. For Intel processors:
+```
+intel_iommu=pt
+```
+
+1.3. Edit `/etc/modprobe.d/vfio.conf`
+```
+options vfio-pci ids=10de:11fa,10de:0e0b
+softdep snd_hda_intel pre: vfio-pci
+softdep drm pre: vfio-pci
+softdep nvidia pre: vfio-pci
+softdep nouveau pre: vfio-pci
+```
+
+1.4. vfio dev file permissions are too strict by default. To fix this, first add the running user to `kvm` group, then create file `/etc/udev/rules.d/50-vfio.rules`
+```
+SUBSYSTEM=="vfio", OWNER="root", GROUP="kvm"
+```
+and then run
+```
+sudo udev trigger
+```
+
+1.5. Extract GPU VBIOS. From the current directory of the vm (where `vmconfig.yml` is located):
+```
+# echo 1 > /sys/bus/pci/devices/0000\:09:00.0/rom
+# cat /sys/bus/pci/devices/0000\:09:00.0/rom > vbios.rom
+# echo 0 > /sys/bus/pci/devices/0000\:09:00.0/rom
+```
+
+For more detail refer to the [venerable article](https://wiki.archlinux.org/title/PCI_passthrough_via_OVMF) in ArchWiki.
+
 
 ### `share_dir_as_fsd`
 (Optional) Share a host directory with [virtiofsd](https://virtio-fs.gitlab.io/index.html).

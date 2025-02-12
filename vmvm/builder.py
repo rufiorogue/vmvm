@@ -189,14 +189,15 @@ class CmdBuilder:
 
 
         def generate_blockdev_desc(idx: int, filename: str,disk_virtio_mode: str) -> list[str]:
+            trim_options = 'discard=unmap,detect-zeroes=unmap'
             if '/dev' in filename:
                 d = [
-                    '-blockdev', f'driver=raw,node-name=hosthd{idx},file.driver=host_device,file.filename={filename}',
+                    '-blockdev', f'driver=raw,node-name=hosthd{idx},file.driver=host_device,file.filename={filename},{trim_options}',
                 ]
             else:
                 img_format_driver = disk_image_format_by_name(filename)
                 d = [
-                   '-blockdev', f'driver={img_format_driver},node-name=hd{idx},file.driver=file,file.filename={filename}',
+                   '-blockdev', f'driver={img_format_driver},node-name=hd{idx},file.driver=file,file.filename={filename},{trim_options}',
                 ]
 
                 if disk_virtio_mode == 'scsi':
