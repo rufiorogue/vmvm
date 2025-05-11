@@ -118,7 +118,7 @@ class CmdBuilder:
                 logging.info('SPICE server running on tcp://localhost:%s', spice_port)
 
                 args += [
-                    '-spice', f'port={spice_port},disable-ticketing=on',
+                    '-spice', f'port={spice_port},addr=127.0.0.1,disable-ticketing=on',
                 ]
             # common SPICE args
             args += [
