@@ -70,7 +70,7 @@ def parse_config(conf: dict) -> VMOptions:
 
     o_cpu_model = conf.get('cpu_model', {
         'i386':    'qemu32',
-        'x86_64':  'host',
+        'x86_64':  'host' if o_enable_kvm else 'max',
         'aarch64': 'max',
     }[o_arch] ); consume('cpu_model')
 

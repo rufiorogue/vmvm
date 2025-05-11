@@ -51,7 +51,7 @@ def test_default():
     assert cmdline == []
     cmdline = b.cdrom_args(vmoptions_default, mount=True)
     assert cmdline == []
-    cmdline = b.common_args(vmoptions_default, RuntimeOptions(spice_port=123,tpm_socket="/tmp/my-socket")).args
+    cmdline = b.common_args(vmoptions_default, RuntimeOptions(spice_port=123,tpm_socket="/tmp/my-socket",has_cpu_topoext=False)).args
     assert cmdline == [
         '-name', 'foo',
         '-machine', 'q35',
@@ -112,7 +112,7 @@ vmoptions_linux_1 = VMOptions(
 
 def test_linux_1():
     b = CmdBuilder()
-    cmdline = b.common_args(vmoptions_linux_1, RuntimeOptions(spice_port=5900,tpm_socket="")).args
+    cmdline = b.common_args(vmoptions_linux_1, RuntimeOptions(spice_port=5900,tpm_socket="",has_cpu_topoext=False)).args
     assert cmdline == [
         '-name', 'bar',
         '-machine', 'q35',
@@ -153,7 +153,7 @@ def make_vmoptions_linux_efi_secboot():
 def test_linux_efi_edk2_not_installed():
     b = CmdBuilder(listdir_fn=lambda _: [], pathexists_fn=lambda _: False)
     with pytest.raises(FileNotFoundError):
-        b.common_args(make_vmoptions_linux_efi_nosecboot(), RuntimeOptions(spice_port=5900,tpm_socket="")).args
+        b.common_args(make_vmoptions_linux_efi_nosecboot(), RuntimeOptions(spice_port=5900,tpm_socket="",has_cpu_topoext=False)).args
 
 
 def test_linux_efi():
@@ -166,7 +166,7 @@ def test_linux_efi():
                 return p in efi_dir_contents
             return False
         b = CmdBuilder(listdir_fn=my_listdir, pathexists_fn=my_path_exists)
-        cmdline = b.common_args(options, RuntimeOptions(spice_port=5900,tpm_socket="")).args
+        cmdline = b.common_args(options, RuntimeOptions(spice_port=5900,tpm_socket="",has_cpu_topoext=False)).args
         assert is_sublist(expectation, cmdline)
 
 
@@ -287,7 +287,45 @@ def test_linux_3daccel():
         control_socket = False,
     )
     b = CmdBuilder()
-    cmdline = b.common_args(vmoptions_linux_3daccel, RuntimeOptions(spice_port=0,tpm_socket="")).args
+    cmdline = b.common_args(vmoptions_linux_3daccel, RuntimeOptions(spice_port=0,tpm_socket="",has_cpu_topoext=False)).args
     assert is_sublist([
         '-device', 'virtio-vga-gl',
         ], cmdline)
+
+
+def test_topoext():
+    vmoptions = VMOptions(
+        disks = [],
+        name = "bar",
+        cpus = 4,
+        ram = "4G",
+        arch = "x86_64",
+        machine = "q35",
+        enable_efi = False,
+        enable_kvm = False,
+        cpu_model = "host",
+        enable_boot_menu = False,
+        enable_secureboot = False,
+        enable_tpm = False,
+        disk_virtio_mode = "blk",
+        usbdevices = [],
+        isoimages = [],
+        need_cd = False,
+        floppy = None,
+        share_dir_as_fat = None,
+        share_dir_as_floppy = None,
+        share_dir_as_fsd = None,
+        nic_model = "none",
+        nic_forward_ports = [],
+        soundcard_model = "none",
+        gpu_model = "none",
+        gpu_passthrough = None,
+        lg_shm = False,
+        display = "gtk",
+        spice = "none",
+        control_socket = False,
+    )
+    b = CmdBuilder()
+    cmdline = b.common_args(vmoptions, RuntimeOptions(spice_port=0,tpm_socket="",has_cpu_topoext=True)).args
+    assert is_sublist(['-cpu', 'host,+topoext'], cmdline)
+

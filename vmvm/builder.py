@@ -61,6 +61,7 @@ class VMOptions:
 class RuntimeOptions:
     spice_port: int
     tpm_socket: str
+    has_cpu_topoext: bool
 
 @dataclass
 class ExecCommand:
@@ -85,11 +86,13 @@ class CmdBuilder:
             '-machine', o.machine,
             '-smp', str(o.cpus),
             '-m', o.ram,
-            '-cpu', o.cpu_model,
-
             #'-balloon', 'virtio',
             #'-localtime',
         ]
+        cpu_model = o.cpu_model
+        if cpu_model == 'host' and uo.has_cpu_topoext:
+            cpu_model += ',+topoext'
+        args += [ '-cpu', cpu_model ]
 
         pre_commands: list[ExecCommand] = []
 

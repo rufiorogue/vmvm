@@ -44,3 +44,10 @@ def test_efi():
     o = parse_config(dict(name='foo',efi=True))
 
     assert o.enable_efi == True
+
+
+def test_nokvm():
+    o = parse_config(dict(name='foo',kvm=False))
+
+    assert o.enable_kvm == False
+    assert o.cpu_model == 'max'

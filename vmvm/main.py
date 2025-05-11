@@ -6,6 +6,7 @@ from .builder import CmdBuilder, RuntimeOptions, CommonArgsBuildResult
 from .exec import exec_with_trace
 from .utils import disk_image_format_by_name, get_unix_sock_path, SockType
 from .tpm_manager import TPMManager
+from .hw_caps import check_has_topoext
 
 SPICE_PORT_BASE=5900
 
@@ -67,7 +68,11 @@ class App:
     def act_install(self):
         self._start_tpm()
         info('action: installing operating system inside vm')
-        runtime_options = RuntimeOptions(spice_port=find_next_free_port(SPICE_PORT_BASE),tpm_socket=self.tpm_manager.sock if self.tpm_manager else None)
+        runtime_options = RuntimeOptions(
+            spice_port=find_next_free_port(SPICE_PORT_BASE),
+            tpm_socket=self.tpm_manager.sock if self.tpm_manager else None,
+            has_cpu_topoext=check_has_topoext()
+            )
         cmd_builder = CmdBuilder()
         common_args_build_result: CommonArgsBuildResult = cmd_builder.common_args(self._options,runtime_options)
         for pre_command in common_args_build_result.pre_commands:
@@ -80,7 +85,11 @@ class App:
     def act_run(self):
         self._start_tpm()
         info('action: running vm')
-        runtime_options = RuntimeOptions(spice_port=find_next_free_port(SPICE_PORT_BASE),tpm_socket=self.tpm_manager.sock if self.tpm_manager else None)
+        runtime_options = RuntimeOptions(
+            spice_port=find_next_free_port(SPICE_PORT_BASE),
+            tpm_socket=self.tpm_manager.sock if self.tpm_manager else None,
+            has_cpu_topoext=check_has_topoext()
+            )
         cmd_builder = CmdBuilder()
         common_args_build_result: CommonArgsBuildResult = cmd_builder.common_args(self._options,runtime_options)
         for pre_command in common_args_build_result.pre_commands:
