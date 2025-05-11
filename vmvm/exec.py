@@ -1,10 +1,11 @@
 import subprocess
 import logging
 import io
+import re
 
 def exec_with_trace(executable_name: str, args: list[str]) -> int:
     real_args = [executable_name] + args
-    logging.info('running %s with args: %s', executable_name, ' '.join(real_args))
+    logging.info('running %s with args: %s', executable_name, ' '.join(map(lambda x: '\n'+x if re.match('^-+', x) else x, real_args)))
     proc = subprocess.Popen(args=real_args,stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     logging.info('-'*80)
     for line in io.TextIOWrapper(proc.stdout, encoding='utf-8'):
