@@ -3,7 +3,7 @@ import os.path
 from pathlib import Path
 import logging
 import json
-from .utils import disk_image_format_by_name
+from .utils import disk_image_format_by_name, get_unix_sock_path, SockType
 
 from dataclasses import dataclass
 
@@ -79,11 +79,6 @@ class CmdBuilder:
 
     def common_args(self, o: VMOptions, uo: RuntimeOptions) -> CommonArgsBuildResult:
 
-        def get_unix_sock_path(sock_name: str) -> str:
-            dir = f'/run/user/{os.getuid()}/qemu/{o.name}/'
-            Path(dir).mkdir(parents=True,exist_ok=True)
-            return dir + f'{sock_name}.sock'
-
 
         args = [
             '-name', o.name,
@@ -110,7 +105,7 @@ class CmdBuilder:
         # SPICE:
         if o.spice != 'none':
             if o.spice == 'unix':
-                spice_unix_sock_path = get_unix_sock_path('spice')
+                spice_unix_sock_path = get_unix_sock_path(sock_type=SockType.SPICE, vm_name=o.name)
                 logging.info('SPICE server running on unix://%s', spice_unix_sock_path)
 
                 args += [
@@ -134,7 +129,7 @@ class CmdBuilder:
 
         # QMP
         if o.control_socket:
-            qmp_unix_sock_path = get_unix_sock_path('qmp')
+            qmp_unix_sock_path = get_unix_sock_path(sock_type=SockType.QMP,vm_name=o.name)
             args += [ '-qmp', f'unix:{qmp_unix_sock_path},server,nowait', ]
             logging.info('control socket available on unix://%s', qmp_unix_sock_path)
 

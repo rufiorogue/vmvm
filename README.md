@@ -58,6 +58,7 @@ Note that all non-absolute paths in the config are relative to `vmconfig.yml` lo
 | `init`    | Create an image file for the first HDD in the config (if does not exist). In the example above `system.qcow2` will be created |
 | `install` | Run VM, boot from CD |
 | `run`     | Run VM, boot from first HDD |
+| `console` | open an interactive QMP shell |
 
 `install` and `run` both run the VM however the difference is how the boot device is selected.
 
@@ -67,8 +68,8 @@ Note that all non-absolute paths in the config are relative to `vmconfig.yml` lo
 
 `run`:
 - always boot from first HDD
-- if `need_cd` = `False` (default) then `os_install` is ignored and thus no CD images are mounted
-- if `need_cd` = `True` then `os_install` images are mounted
+- if `need_cd` = `false` (default) then `os_install` is ignored and thus no CD images are mounted
+- if `need_cd` = `true` then `os_install` images are mounted
 
 ## Configuration Options
 
@@ -94,10 +95,10 @@ If not specified, `default` for current arch is used.
 Values: `i386`, `x86_64`, `aarch64`
 
 ### `efi`
-(Optional) enable EFI.  True=EFI, False=BIOS
+(Optional) enable EFI.  `true`=EFI, `false`=BIOS
 
 ### `secureboot`
-(Optional) enable EFI SecureBoot (`OVMF_CODE.secboot.fd`). Has no effect unless `efi` is set to True
+(Optional) enable EFI SecureBoot (`OVMF_CODE.secboot.fd`). Has no effect unless `efi` is set to `true`
 
 ### `tpm`
 (Optional) software emulation of Trusted Platform Module 2.0.
@@ -279,9 +280,10 @@ Typical values: `hda`, `ac97`, `sb16`, `none`.
 - `none`: disables SPICE entirely. Required if using a 3D-accelerated GPU such as `virtio-vga-gl`.
 
 ### `control_socket`
-(Optional) enable QMP control socket `/run/user/<UID>/qemu/<machine name>/qmp.sock`. Allows to control the VM with
-[`qmp-shell`](https://qemu.readthedocs.io/projects/python-qemu-qmp/en/latest/man/qmp_shell.html) or `qmp-tui` commands
-from [`python-qemu-qmp`](https://pypi.org/project/qemu.qmp/) package.
+(Optional) enable QMP control socket `/run/user/<UID>/qemu/<machine name>/qmp.sock`. Allows to control the VM with either
+in-built QMP console mode or dedicated clients like
+[`qmp-shell`](https://qemu.readthedocs.io/projects/python-qemu-qmp/en/latest/man/qmp_shell.html) or `qmp-tui`
+from [`qemu.qmp`](https://pypi.org/project/qemu.qmp/) package.
 
 ## Ejecting / changing CD images
 
@@ -303,6 +305,36 @@ To view available block devices type in QEMU monitor:
 ```
 (qemu) info block
 ```
+
+## Interactive QMP console
+
+An interactive QMP shell is opened by specifying action `console`. For it to work `control_socket` option must also be set to `true` in the config.
+Type `help` or `h` to see available commands. Type `quit` or `q` to exit the shell.
+For detailed reference see [official documentation](https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html).
+
+Console commands follow this syntax:
+
+```
+COMMAND [ARG1=VALUE1 [ARG2=VALUE2 ... ARGN=VALUEN]]
+```
+
+- COMMAND: A required, single identifier that specifies the operation to perform.
+
+- ARGUMENTS: An optional list of key-value pairs specifying parameters for the command. Arguments are separated by whitespace.
+
+- VALUE: The value assigned to a key; may be scalar or a list.
+            List values are enclosed in square brackets `[...]`,
+            elements separated by commas without whitespace. Examples: `[hd0]`, `[hd0,hd1]`
+
+Examples:
+
+```
+snapshot-save job-id=save0 tag=default vmstate=hd0 devices=[hd0]
+snapshot-load job-id=load0 tag=default vmstate=hd0 devices=[hd0]
+snapshot-delete job-id=del0 tag=default devices=[hd0]
+```
+
+
 ## Handy SMB server
 
 As an alternative to `share_...` config options,  a docker compose is provided in subdirectory `smb` to spin up a SMB server,
