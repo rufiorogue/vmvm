@@ -309,30 +309,11 @@ To view available block devices type in QEMU monitor:
 ## Interactive QMP console
 
 An interactive QMP shell is opened by specifying action `console`. For it to work `control_socket` option must also be set to `true` in the config.
-Type `help` or `h` to see available commands. Type `quit` or `q` to exit the shell.
-For detailed reference see [official documentation](https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html).
 
-Console commands follow this syntax:
+Under the hood it is implemented as an integrated `qmp-shell` from `qemu.qmp` project.
+For console command syntax reference check [qmp-shell](https://qemu.readthedocs.io/projects/python-qemu-qmp/en/latest/man/qmp_shell.html) man page.
 
-```
-COMMAND [ARG1=VALUE1 [ARG2=VALUE2 ... ARGN=VALUEN]]
-```
-
-- COMMAND: A required, single identifier that specifies the operation to perform.
-
-- ARGUMENTS: An optional list of key-value pairs specifying parameters for the command. Arguments are separated by whitespace.
-
-- VALUE: The value assigned to a key; may be scalar or a list.
-            List values are enclosed in square brackets `[...]`,
-            elements separated by commas without whitespace. Examples: `[hd0]`, `[hd0,hd1]`
-
-Examples:
-
-```
-snapshot-save job-id=save0 tag=default vmstate=hd0 devices=[hd0]
-snapshot-load job-id=load0 tag=default vmstate=hd0 devices=[hd0]
-snapshot-delete job-id=del0 tag=default devices=[hd0]
-```
+For detailed QMP commands reference check the [official QEMU documentation](https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html).
 
 
 ## Handy SMB server

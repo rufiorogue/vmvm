@@ -99,54 +99,21 @@ class App:
         self._shutdown_tpm()
 
     def act_console(self):
-        import asyncio
-        import qemu.qmp
-        import readline
-        from rich import print as rprint
-        import re
+        from qemu.qmp import ConnectError, QMPError
+        from qemu.qmp.qmp_shell import QMPShell, die
 
-        async def console_main():
-            qmp = qemu.qmp.QMPClient(self._options.name)
-            socket_path = get_unix_sock_path(SockType.QMP, self._options.name)
-            await qmp.connect(socket_path)
-            print(f'Welcome to the QMP console. You are controlling "{self._options.name}"')
+        socket_address = get_unix_sock_path(SockType.QMP, self._options.name)
 
-            async def qmp_try(cmd: str):
-                tokens = cmd.split()
-                if len(tokens) > 1:
-                    # assume 1st token is command, the rest are arguments
-                    cmd_exec = tokens[0]
-                    def parse_arg_val(arg_val: str):
-                        if re.match(r'^\[\w+[,\w]*\]$', arg_val):
-                            values = arg_val.replace('[','').replace(']','').split(',')
-                            return values
-                        else:
-                            return arg_val
-                    cmd_args =  { arg.split('=')[0]: parse_arg_val(arg.split('=')[1]) for arg in tokens[1:] }
-                else:
-                    cmd_exec = cmd
-                    cmd_args = None
-                try:
-                    res = await qmp.execute(cmd_exec, cmd_args)
-                    rprint(res)
-                except Exception as e:
-                    print(e)
-            while True:
-                cmd = input('> ')
-                match cmd:
-                    case 'q' | 'quit':
-                        break
-                    case 'h' | 'help':
-                        res = await qmp.execute('query-commands')
-                        print('\n'.join(sorted([x['name'] for x in res])))
-
-                    case _:
-                        await qmp_try(cmd)
-
-            await qmp.disconnect()
-
-        asyncio.run(console_main())
-
+        with QMPShell(address=socket_address, pretty=True) as qemu:
+            try:
+                qemu.connect()
+            except ConnectError as err:
+                if isinstance(err.exc, OSError):
+                    die(f"Couldn't connect to {socket_address}: {err!s}")
+                die(str(err))
+            print(f'You are now controlling "{self._options.name}"')
+            for _ in qemu.repl():
+                pass
 
 USAGE= '''
 
